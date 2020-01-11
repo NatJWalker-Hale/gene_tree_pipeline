@@ -3,6 +3,8 @@
 import sys
 import os
 import math
+import newick3
+import phylo3
 from tree_utils import get_front_names,remove_kink,get_front_labels
 from shutil import copy 
 
@@ -10,8 +12,8 @@ def count_taxa(node):
 	"""given a node count how many taxa it has in frount"""
 	return len(set(get_front_names(node)))
 	
-def cut_long_internal_branches(curroot,cutoff):
-	"""cut long branches and output all subtrees with at least 4 tips"""
+def cut_long_internal_branches(curroot,cutoff,mintaxa=4):
+	"""cut long branches and output all subtrees >= mintaxa"""
 	going = True
 	subtrees = [] #store all subtrees after cutting
 	while going:
@@ -20,12 +22,12 @@ def cut_long_internal_branches(curroot,cutoff):
 			if node.istip or node == curroot: continue
 			child0,child1 = node.children[0],node.children[1]
 			if node.length > cutoff:
-				print node.length
+				print(node.length)
 				if not child0.istip and not child1.istip and child0.length+child1.length>cutoff:
-					print child0.length + child1.length
-					if count_taxa(child0) >= 4:
+					print(child0.length + child1.length)
+					if count_taxa(child0) >= int(mintaxa):
 						subtrees.append(child0)
-					if count_taxa(child1) >= 4:
+					if count_taxa(child1) >= int(mintaxa):
 						subtrees.append(child1)						
 				else: subtrees.append(node)
 				node = node.prune()
@@ -33,9 +35,23 @@ def cut_long_internal_branches(curroot,cutoff):
 					node,curroot = remove_kink(node,curroot)
 					going = True
 				break
-	if count_taxa(curroot) >= 4:
+	if count_taxa(curroot) >= int(mintaxa):
 		subtrees.append(curroot) #write out the residue after cutting
 	return subtrees
+
+def cut_internal_branches(tre,brlencutoff=1.0,mintaxa=4):
+	mintaxa = int(mintaxa)
+	brlencutoff = float(brlencutoff)
+	print("Cutting at branches longer than "+str(brlencutoff))
+	with open(tre,"r") as inf:
+		intree = newick3.parse(inf.readline())
+		subtrees = cut_long_internal_branches(intree,brlencutoff,mintaxa)
+		if len(subtrees) == 0:
+			print("No branches to cut in "+tre)
+		else:
+			count = 0
+			for t in subtrees:
+				
 
 
 
