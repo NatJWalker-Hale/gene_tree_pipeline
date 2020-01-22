@@ -74,24 +74,8 @@ def trim(curroot,relative_cutoff,absolute_cutoff):
                             break
                     if not keep_checking: break
     return curroot
-    
-# def main(DIR,tree_file_ending,relative_cut,absolute_cut):
-#     if DIR[-1] != "/": DIR += "/"
-#     filecount = 0
-#     for i in os.listdir(DIR):
-#         if i.endswith(tree_file_ending):
-#             print(i)
-#             filecount += 1
-#             with open(DIR+i,"r") as infile:
-#                 intree = newick3.parse(infile.readline())
-#             outtree = trim(intree,float(relative_cut),float(absolute_cut))
-#             if outtree != None:
-#                 with open(DIR+i+".tt","w") as outfile:
-#                     outfile.write(newick3.tostring(outtree)+";\n")
-#     assert filecount > 0, \
-#         "No file end with "+tree_file_ending+" found in "+DIR
 
-def trim_tree(inf,relative_cut=1.0,absolute_cut=0.5):
+def trim_tree(inf,relative_cut=1.0,absolute_cut=1.5):
     with open(inf,"r") as infile:
         intree = newick3.parse(infile.readline())
     outtree = trim(intree,float(relative_cut),float(absolute_cut))
@@ -103,8 +87,8 @@ if __name__ == "__main__":
     if len(sys.argv[1:]) == 0:
         sys.argv.append("-h")
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c","--absolute_cutoff",help="Trim terminal edges longer than absolute cutoff (default 1.0)",default=1.0)
-    parser.add_argument("-r","--relative_cutoff",help="Trim terminal edges longer than relative cutoff and > 10x length of sister (default 0.5)",default=0.5)
+    parser.add_argument("-c","--absolute_cutoff",help="Trim terminal edges longer than absolute cutoff (default 1.5)",default=1.5)
+    parser.add_argument("-r","--relative_cutoff",help="Trim terminal edges longer than relative cutoff and > 10x length of sister (default 1.0)",default=1.0)
     parser.add_argument("intree",help="Tree in newick format to trim long branches")
     args = parser.parse_args()
     trim_tree(args.intree,args.absolute_cutoff,args.relative_cutoff)

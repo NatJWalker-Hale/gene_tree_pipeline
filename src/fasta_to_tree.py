@@ -24,12 +24,14 @@ def clean(aln):
 
 def aln_to_tree(aln,treeblder="fasttree",thread=2):
     if treeblder == "fasttree":
-        cmd = ["fasttree","-lg","-out",aln+".ft.tre",aln]
+        cmd = ["fasttree","-wag","-out",aln+".fasttree.tre",aln]
     elif treeblder == "iqtree":
-        cmd = ["iqtree","-s",aln,"-m","LG+G","-nt",str(thread)]
+        cmd = ["iqtree","-s",aln,"-m","WAG+G","-nt",str(thread)]
     print("Inferring tree with "+treeblder)
     proc = subprocess.Popen(cmd,shell=False,stdout=subprocess.PIPE)
     proc.wait()
+    if treeblder == "iqtree":
+        os.rename(aln+".treefile",aln+".iqtree.tre")
 
 def fasta_to_tree(inf,thread=2,alner="mafft",treeblder="fasttree"):
     if not inf+"."+alner+".aln" in os.listdir(os.getcwd()):
@@ -47,9 +49,9 @@ if __name__ == "__main__":
         sys.argv.append("-h")
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-a","--aligner",help="The software used to infer alignments. Options are mafft (auto, default), fsa")
-    parser.add_argument("-t","--tree_builder",help="The software used to infer trees. Options are fasttree (default), iqtree")
-    parser.add_argument("-nt","--threads",help="The number of threads to use for alignment and tree inference (default 2)")
+    parser.add_argument("-a","--aligner",help="The software used to infer alignments. Options are mafft (auto, default), fsa",default="mafft")
+    parser.add_argument("-t","--tree_builder",help="The software used to infer trees. Options are fasttree (default), iqtree",default="fasttree")
+    parser.add_argument("-nt","--threads",help="The number of threads to use for alignment and tree inference (default 2)",default=2)
     parser.add_argument("fasta", help="FASTA of sequences to align and infer a tree")
     args = parser.parse_args()
 

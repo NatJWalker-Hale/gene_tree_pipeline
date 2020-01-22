@@ -2,6 +2,7 @@
 
 import sys
 import os
+import argparse
 import math
 import newick3
 import phylo3
@@ -35,8 +36,8 @@ def cut_long_internal_branches(curroot,cutoff,mintaxa=4):
 					node,curroot = remove_kink(node,curroot)
 					going = True
 				break
-	if count_taxa(curroot) >= int(mintaxa):
-		subtrees.append(curroot) #write out the residue after cutting
+	#if count_taxa(curroot) >= int(mintaxa):
+	subtrees.append(curroot) #write out the residue after cutting
 	return subtrees
 
 def cut_internal_branches(tre,brlencutoff=1.0,mintaxa=4):
@@ -45,58 +46,33 @@ def cut_internal_branches(tre,brlencutoff=1.0,mintaxa=4):
 	print("Cutting at branches longer than "+str(brlencutoff))
 	with open(tre,"r") as inf:
 		intree = newick3.parse(inf.readline())
-		subtrees = cut_long_internal_branches(intree,brlencutoff,mintaxa)
+		subtrees = sorted([x for x in cut_long_internal_branches(intree,brlencutoff,mintaxa)],reverse=True,key=lambda x: count_taxa(x))
 		if len(subtrees) == 0:
 			print("No branches to cut in "+tre)
+			return None
 		else:
 			count = 0
+			subtree_names = [] #store subtree labels
 			for t in subtrees:
-				
+				if count_taxa(t) >= mintaxa:
+					if t.nchildren == 2: # fix bifurcating roots from cutting
+ 						_,t = remove_kink(t,t)
+					count += 1
+					subtree_names.append(tre.split(".")[0]+"_"+str(count)+".subtree")
+					with open(tre.split(".")[0]+"_"+str(count)+".subtree","w") as outfile:
+						outfile.write(newick3.tostring(t)+";\n")
+	return subtree_names
 
+if __name__ == "__main__":
+	if len(sys.argv[1:]) == 0:
+		sys.argv.append("-h")
 
+	parser = argparse.ArgumentParser()
+	parser.add_argument("-bc","--brlencut",help="Cut internal branches longer than this value (default 1.0)",default=1.0,type=float)
+	parser.add_argument("-m","--mintaxa",help="Minimum taxa in subtree to retain (default 4)",default=4,type=int)
+	parser.add_argument("intree",help="Tree file in newick format to cut internal branches")
+	#parser.set_defaults(brlencut=1.0,mintaxa=4) # unnecessary with arg level defaults
+	args = parser.parse_args()
 
-# def main(inDIR,file_ending,branch_len_cutoff,min_taxa,outDIR):
-# 	"""cut long branches and output subtrees as .subtre files
-# 	if uncut and nothing changed betwee .tre and .subtree
-# 	copy the original .tre file to the outdir"""
-# 	if inDIR[-1] != "/": inDIR += "/"
-# 	if outDIR[-1] != "/": outDIR += "/"
-# 	min_taxa = int(min_taxa)
-# 	filecount = 0
-# 	cutoff = float(branch_len_cutoff)
-# 	print "cutting branches longer than",cutoff
-# 	for i in os.listdir(inDIR):
-# 		if not i.endswith(file_ending): continue
-# 		print i
-# 		filecount += 1
-# 		with open(inDIR+i,"r") as infile: #only 1 tree in each file
-# 			intree = newick3.parse(infile.readline())
-# 		try:
-# 			with open(inDIR+i[:i.find(".tre")]+".tre","r") as infile: #the original .tre
-# 				raw_tree_size = len(get_front_labels(newick3.parse(infile.readline())))
-# 		except: # did not refine this round. Use the .tre.tt.mm tree
-# 			raw_tree_size = len(get_front_labels(intree))
-# 		num_taxa = count_taxa(intree)
-# 		if num_taxa < min_taxa:
-# 			print "Tree has",num_taxa,"less than", min_taxa,"taxa"
-# 		else:
-# 			print ".tre:",raw_tree_size,"tips; "+file_ending+": "+str(len(get_front_labels(intree)))+" tips"
-# 			subtrees = cut_long_internal_branches(intree,cutoff)
-# 			if len(subtrees) == 0:
-# 				print "No tree with at least", min_taxa, "taxa"
-# 			#elif raw_tree_size == len(subtrees[0].leaves()):
-# 				#copy(inDIR+i,outDIR+i)
-# 				#print "written to out directory unchanged"
-# 			else:
-# 				count = 0
-# 				outsizes = ""
-# 				for subtree in subtrees:
-# 					if count_taxa(subtree) >= min_taxa:
-# 						if subtree.nchildren == 2: #fix bifurcating roots from cutting
-# 							temp,subtree = remove_kink(subtree,subtree)
-# 						count += 1
-# 						with open(outDIR+i.split(".")[0]+"_"+str(count)+".subtree","w") as outfile:
-# 							outfile.write(newick3.tostring(subtree)+";\n")
-# 						outsizes += str(len(subtree.leaves()))+", "
-# 				print count,"tree(s) wirtten. Sizes:",outsizes
-# 	assert filecount > 0, "No file end with "+file_ending+" in "+inDIR
+	tref = os.path.abspath(args.intree)
+	cut_internal_branches(tref,args.brlencut,args.mintaxa)

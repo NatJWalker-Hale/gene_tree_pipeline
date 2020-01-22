@@ -1,7 +1,7 @@
 import string, sys
 from shlex import shlex
 from phylo3 import Node
-import io
+from io import StringIO,BytesIO
 
 
 class Tokenizer(shlex):
@@ -32,7 +32,10 @@ def parse(input, ttable=None):
     or a string (converted to StringIO)
     """
     if type(input) is str:
-        input = io.StringIO(input)
+        try:
+            input = BytesIO(input)
+        except TypeError:
+            input = StringIO(input)
     
     start_pos = input.tell()
     tokens = Tokenizer(input)

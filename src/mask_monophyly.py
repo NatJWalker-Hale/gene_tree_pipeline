@@ -11,10 +11,6 @@ from utils import parse_fasta
 def get_names_to_exclude(ignoref):
     ignore = [l.strip() for l in open(ignoref,"r").readlines()]
     return ignore
-
-# def get_clusterID(filename):
-# 	"""given a file name return the cluster id"""
-# 	return filename.split(".")[0]
 	
 def mask_monophyletic_tips(curroot,unamb_chrDICT,ignore=[]):
 	going = True
@@ -82,8 +78,8 @@ if __name__ == "__main__":
         sys.argv.append("-h")
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-p","--mask_paraphyly",action="store_true",help="Mask tips that are paraphyletic (default True)")
-    parser.add_argument("-f","--exclude_file",help="File containing taxon names (one per line) to ignore while masking",type=argparse.FileType('r'))
+    parser.add_argument("-p","--mask_paraphyly",help="Mask tips that are paraphyletic (default True)",default=True)
+    parser.add_argument("-f","--exclude_file",help="File containing taxon names (one per line) to ignore while masking",default=None)
     parser.add_argument("tree",help="The tree file in newick format to mask tips")
     parser.add_argument("aln_cln",help="The cleaned alignment in FASTA format corresponding to the tips of the tree")
     args = parser.parse_args()
