@@ -3,6 +3,7 @@
 import os
 import sys
 import argparse
+import shutil
 import newick3
 import phylo3
 from utils import parse_fasta
@@ -35,12 +36,12 @@ def check_same_tree(tree1,tree2):
     else:
         return False
     
-def sub_loop(fa,alner,treeblder,abscut,relcut,intcut,mintaxa,nt,ignore,para):
+def sub_loop(fa,alner,treeblder,abscut,relcut,nt,ignore,para):
     fasta_to_tree(fa,nt,alner,treeblder)
     trim_tree(fa+"."+alner+".aln-cln."+treeblder+".tre",relcut,abscut)
     mask_monophyly(fa+"."+alner+".aln-cln."+treeblder+".tre.tt",fa+"."+alner+".aln-cln",para,ignore)
 
-def main_loop(bait,fa,alner,treeblder,abscut,relcut,intcut,mintaxa,nt,ignore,para):
+def main_loop(bait,fa,alner,treeblder,abscut,relcut,intcut,mintaxa,nt,ignore,para,iterate):
     bait_seqs = [key for key in dict([x for x in parse_fasta(bait)]).keys()]
     fasta_to_tree(fa,nt,alner,treeblder)
     trim_tree(fa+"."+alner+".aln-cln."+treeblder+".tre",relcut,abscut)
@@ -52,12 +53,34 @@ def main_loop(bait,fa,alner,treeblder,abscut,relcut,intcut,mintaxa,nt,ignore,par
             if check_bait_presence(bait_seqs,t):
                 print(bait+" in "+t)
                 newfa = write_fasta_from_tree(fa,t)
-                main_loop(bait,newfa,alner,treeblder,abscut,relcut,intcut,mintaxa,nt,ignore,para)
+                main_loop(bait,newfa,alner,treeblder,abscut,relcut,intcut,mintaxa,nt,ignore,para,iterate)
             else:
                 os.remove(t)
     else:
-        print("No more subtrees to cut. Iterating tip trimming and monophyletic masking until topology stabilises.")
-        newfa = write_fasta_from_tree(fa,subtrees[0])
+        if iterate:
+            print("No more subtrees to cut. Iterating tip trimming and monophyletic masking until topology stabilises.")
+            newfa = write_fasta_from_tree(fa,subtrees[0])
+            tree1 = subtrees[0]
+            name = subtrees[0].split(".")[0]+"_m"
+            sub_loop(newfa,alner,treeblder,abscut,relcut,nt,ignore,para)
+            shutil.copyfile(newfa+"."+alner+".aln-cln."+treeblder+".tre.tt.mm",name+".tre")
+            tree2 = name+".tre"
+            going = True
+            if check_same_tree(tree1,tree2):
+                going = False
+            while going:
+                tree1 = tree2
+                name = tree1.split(".")[0]+"_1"
+                newfa = write_fasta_from_tree(fa,tree1)
+                sub_loop(newfa,alner,treeblder,abscut,relcut,nt,ignore,para)
+                shutil.copyfile(newfa+"."+alner+".aln-cln."+treeblder+".tre.tt.mm",name+".tre")
+                tree2 = name+".tre"
+                if check_same_tree(tree1,tree2):
+                    going = False
+            print("Finished iteration")
+        else:
+            _ = write_fasta_from_tree(fa,subtrees[0])
+            print("No iteration requested. Finished")
 
 if __name__ == "__main__":
     if len(sys.argv[1:]) == 0:
@@ -73,6 +96,7 @@ if __name__ == "__main__":
     parser.add_argument("-nt","--threads",help="Number of threads to use. Defaults to 2",default=2)
     parser.add_argument("-mp","--mask_paraphyly",help="Whether to mask paraphyletic sequences while doing monophyletic masking. Defaults to True",default=True)
     parser.add_argument("-if","--ignore_file",help="File containing taxon names (each on one line) to ignore while masking monophyletic tips. Defaults to none",default=None)
+    parser.add_argument("-it","--iterate",help="Whether to iterate tip trimming and monophyletic masking until topology has stabilised following final subtree cut. Defaults to false",default=False)
     parser.add_argument("-o","--output_dir",help="Directory to put output. Defaults to current directory",default=os.getcwd())
     parser.add_argument("bait",help="FASTA file of baits to search. These will be aligned with FSA so the more homologs the better.")
     parser.add_argument("database_dir",help="Path to the database containing proteomes to search. Expects file endings of .pep.fa or .cdhit")
@@ -88,7 +112,7 @@ if __name__ == "__main__":
         IGNORE = []
     search_proteomes(args.bait,args.database_dir,args.output_dir)
     main_loop(args.bait,name+".hmmsearch.fa",args.aligner,args.tree_builder,args.tip_abs_cutoff,args.tip_rel_cutoff,args.internal_cutoff,
-    args.min_taxa,args.threads,IGNORE,args.mask_paraphyly)
+    args.min_taxa,args.threads,IGNORE,args.mask_paraphyly,args.iterate)
 
 
     
