@@ -8,7 +8,7 @@ from utils import parse_fasta
 
 def fasta_to_stockholm(inf):
     print("Aligning baits with FSA")
-    cmd = ["fsa","--stockholm",inf]
+    cmd = ["fsa","--fast","--stockholm",inf]
     out = subprocess.run(cmd,shell=False,capture_output=True,text=True).stdout
     with open(inf+".sto","w") as outf:
         outf.write(out) 
@@ -47,8 +47,14 @@ def search_proteomes(bait,database_dir,output_dir):
         name = bait.split("/")[-1].split(".")[0]
     else:
         name = bait.split(".")[0]
-    fasta_to_stockholm(bait)
-    stockholm_to_profile(bait+".sto")
+    if not bait+".sto" in os.listdir(os.getcwd()):
+        fasta_to_stockholm(bait)
+    else:
+        try:
+            stockholm_to_profile(bait+".sto")
+        except:
+            fasta_to_stockholm(bait)
+            stockholm_to_profile(bait+".sto")
     dblist = []
     for dirpath,_,filenames in os.walk(database_dir):
         for f in filenames:
