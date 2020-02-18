@@ -79,7 +79,7 @@ def main_loop(bait,fa,alner,treeblder,abscut,relcut,intcut,mintaxa,nt,ignore=[],
             counter = 1
             while going:
                 tree1 = tree2
-                name = tree1.split(".")[0]+"_"+str(counter)
+                name = tree1.split(".")[0].rsplit("_",1)[0]+"_"+str(counter)
                 newfa = write_fasta_from_tree(fa,tree1)
                 print(ignore)
                 sub_loop(newfa,alner,treeblder,abscut,relcut,nt,ignore,mask,para)
