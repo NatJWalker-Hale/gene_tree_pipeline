@@ -49,6 +49,7 @@ def search_proteomes(bait,database_dir,output_dir):
         name = bait.split(".")[0]
     if not bait+".sto" in os.listdir(os.getcwd()):
         fasta_to_stockholm(bait)
+        stockholm_to_profile(bait+".sto")
     else:
         try:
             stockholm_to_profile(bait+".sto")
