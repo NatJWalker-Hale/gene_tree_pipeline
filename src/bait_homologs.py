@@ -65,7 +65,7 @@ def main_loop(bait,fa,alner,treeblder,abscut,relcut,intcut,mintaxa,nt,ignore=[],
             print("No more subtrees to cut. Iterating tip trimming and monophyletic masking until topology stabilises.")
             newfa = write_fasta_from_tree(fa,subtrees[0])
             tree1 = subtrees[0]
-            name = subtrees[0].split(".")[0]+"_m"
+            name = subtrees[0].split(".")[0]+"_m_1"
             print(ignore)
             sub_loop(newfa,alner,treeblder,abscut,relcut,nt,ignore,mask,para)
             if mask:
@@ -76,7 +76,7 @@ def main_loop(bait,fa,alner,treeblder,abscut,relcut,intcut,mintaxa,nt,ignore=[],
             going = True
             if check_same_tree(tree1,tree2):
                 going = False
-            counter = 1
+            counter = 2
             while going:
                 tree1 = tree2
                 name = tree1.split(".")[0].rsplit("_",1)[0]+"_"+str(counter)
