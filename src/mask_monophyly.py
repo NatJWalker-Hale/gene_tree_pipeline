@@ -55,7 +55,7 @@ def mask_paraphyletic_tips(curroot,unamb_chrDICT,ignore=[]):
 					break
 	return curroot
 	
-def mask(curroot, clnfile, para,ignore=[]):
+def mask(curroot, clnfile, para=True,ignore=[]):
 	chrDICT = {} #key is seqid, value is number of unambiguous chrs
 	for key, value in dict([x for x in parse_fasta(clnfile)]).items():
 		for ch in ['-','X',"x","?","*"]:

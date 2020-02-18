@@ -52,7 +52,7 @@ def search_proteomes(bait,database_dir,output_dir):
     else:
         try:
             stockholm_to_profile(bait+".sto")
-        except:
+        except subprocess.CalledProcessError:
             fasta_to_stockholm(bait)
             stockholm_to_profile(bait+".sto")
     dblist = []
