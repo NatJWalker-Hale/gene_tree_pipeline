@@ -92,6 +92,7 @@ def main_loop(bait,fa,alner,treeblder,abscut,relcut,intcut,mintaxa,nt,ignore=[],
                 if check_same_tree(tree1,tree2):
                     going = False
             print("Finished iteration")
+            _ = write_fasta_from_tree(fa,tree2)
         else:
             _ = write_fasta_from_tree(fa,subtrees[0])
             print("No iteration requested. Finished")
