@@ -4,14 +4,24 @@ import sys
 import os
 import subprocess
 import argparse
+import shutil
 from utils import parse_fasta
 
 def fasta_to_stockholm(inf):
-    print("Aligning baits with FSA")
-    cmd = ["fsa","--fast","--stockholm",inf]
-    out = subprocess.run(cmd,shell=False,capture_output=True,text=True).stdout
-    with open(inf+".sto","w") as outf:
-        outf.write(out) 
+    nseq = 0
+    with open(inf, "r") as seqf:
+        for line in seqf:
+            nseq += 1
+    if nseq == 2:  # 1 sequence
+        print("Single sequence, going straight to HMM")
+        shutil.copy(inf, inf+".sto")
+        # name .sto for compatibility, but actually .fa
+    else:
+        print("Aligning baits with FSA")
+        cmd = ["fsa","--fast","--stockholm",inf]
+        out = subprocess.run(cmd,shell=False,capture_output=True,text=True).stdout
+        with open(inf+".sto","w") as outf:
+            outf.write(out) 
 
 def stockholm_to_profile(sto):
     print("Building HMM profile")
