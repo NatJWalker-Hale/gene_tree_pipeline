@@ -123,7 +123,7 @@ def main_loop(bait, fa, alner, treeblder, abscut, relcut, intcut, mintaxa,
 if __name__ == "__main__":
     if len(sys.argv[1:]) == 0:
         sys.argv.append("-h")
-    
+
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--aligner", help="Alignment software to use: \
                         mafft (auto, default), fsa (defaults to --fast)",
@@ -138,17 +138,37 @@ if __name__ == "__main__":
                         length cutoff for trimming tips. Tips longer than \
                         this and at least 10x longer than sister will be \
                         trimmed. Defaults to 1.0", default=1.0)
-    parser.add_argument("-ic","--internal_cutoff",help="Branch length cutoff for internal branches. Subtrees subtended by branches longer than this will be trimmed. Defaults to 1.0",default=1.0)
-    parser.add_argument("-mt","--min_taxa",help="Minimum taxa in a subtree to conserve and check for bait presence. Defaults to 4",default=4)
-    parser.add_argument("-nt","--threads",help="Number of threads to use. Defaults to 2",default=2)
-    parser.add_argument("-m","--mask",help="If this flag is selected, monophyletic masking will be conducted",action="store_true")
-    parser.add_argument("-mp","--mask_paraphyly",help="Whether to mask paraphyletic sequences while doing monophyletic masking.",action="store_true")
-    parser.add_argument("-if","--ignore_file",help="File containing taxon names (each on one line) to ignore while masking monophyletic tips. Defaults to none",default=None)
-    parser.add_argument("-it","--iterate",help="If this flag is selected, tip trimming and monophyletic masking will be iterated until topology has stabilised following final subtree cut.",action="store_true")
-    parser.add_argument("-o","--output_dir",help="Directory to put output. Defaults to current directory",default=os.getcwd())
-    parser.add_argument("-k", "--keep", help="Number of hits to keep (default all)", type=int, default=None)
-    parser.add_argument("bait",help="FASTA file of baits to search. These will be aligned with FSA so the more homologs the better.")
-    parser.add_argument("database_dir",help="Path to the database containing proteomes to search. Expects file endings of .pep.fa or .cdhit")
+    parser.add_argument("-ic", "--internal_cutoff", help="Branch length \
+                        cutoff for internal branches. Subtrees subtended by \
+                        branches longer than this will be trimmed. Defaults \
+                        to 1.0", default=1.0)
+    parser.add_argument("-mt", "--min_taxa", help="Minimum taxa in a subtree \
+                        to conserve and check for bait presence. Defaults to \
+                        4", default=4)
+    parser.add_argument("-nt", "--threads", help="Number of threads to use. \
+                        Defaults to 2", default=2)
+    parser.add_argument("-m", "--mask", help="If this flag is selected, \
+                        monophyletic masking will be conducted",
+                        action="store_true")
+    parser.add_argument("-mp", "--mask_paraphyly", help="Whether to mask \
+                        paraphyletic sequences while doing monophyletic \
+                        masking", action="store_true")
+    parser.add_argument("-if", "--ignore_file", help="File containing taxon \
+                        names (one per line) to ignore while masking \
+                        monophyletic tips. Defaults masks all taxa",
+                        default=None)
+    parser.add_argument("-it", "--iterate", help="If this flag is selected, \
+                        tip trimming and monophyletic masking will be \
+                        iterated until topology has stabilised following \
+                        final subtree cut", action="store_true")
+    parser.add_argument("-o", "--output_dir", help="Directory to put output. \
+                        Defaults to current directory", default=os.getcwd())
+    parser.add_argument("-k", "--keep", help="Number of hits to keep (default \
+                        all)", type=int, default=None)
+    parser.add_argument("bait", help="FASTA file of baits to search")
+    parser.add_argument("database_dir", help="Path to the database containing \
+                        proteomes to search. Expects file endings of .pep.fa \
+                        or .cdhit")
     args = parser.parse_args()
 
     if "/" in args.bait:
@@ -159,11 +179,9 @@ if __name__ == "__main__":
         IGNORE = get_names_to_exclude(args.ignore_file)
     else:
         IGNORE = []
-    search_proteomes(args.bait,args.database_dir,args.output_dir,blast=False,nhits=args.keep)
-    main_loop(args.bait,name+".hmmsearch.fa",args.aligner,args.tree_builder,args.tip_abs_cutoff,args.tip_rel_cutoff,args.internal_cutoff,args.min_taxa,args.threads,IGNORE,args.mask,args.mask_paraphyly,args.iterate)
-
-
-    
-            
-
-
+    search_proteomes(args.bait, args.database_dir, args.output_dir,
+                     blast=False, nhits=args.keep)
+    main_loop(args.bait, name+".hmmsearch.fa", args.aligner, args.tree_builder,
+              args.tip_abs_cutoff, args.tip_rel_cutoff, args.internal_cutoff,
+              args.min_taxa, args.threads, IGNORE, args.mask,
+              args.mask_paraphyly, args.iterate)
