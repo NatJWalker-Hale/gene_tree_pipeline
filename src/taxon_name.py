@@ -6,7 +6,6 @@ import argparse
 import phylo3
 import newick3
 from utils import parse_fasta
-from typing import TextIO
 
 
 def get_taxon_code_name_corres(inf: str) -> dict:
