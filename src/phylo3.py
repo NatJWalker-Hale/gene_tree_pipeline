@@ -1,7 +1,10 @@
-#import sets
+# import sets
 
-PREORDER = 0; POSTORDER = 1
-BRANCHLENGTH = 0; INTERNODES = 1
+PREORDER = 0
+POSTORDER = 1
+BRANCHLENGTH = 0
+INTERNODES = 1
+
 
 class Node:
     def __init__(self):
@@ -19,14 +22,15 @@ class Node:
         if n2s is None:
             n2s = node2size(self)
         if not self.istip:
-            v = [ (n2s[c], c.label, c) for c in self.children ]
+            v = [(n2s[c], c.label, c) for c in self.children]
             v.sort()
             if reverse:
                 v.reverse()
-            self.children = [ x[-1] for x in v ]
+            self.children = [x[-1] for x in v]
             if recurse:
                 for c in self.children:
-                    c.order_subtrees_by_size(n2s, recurse=True, reverse=reverse)
+                    c.order_subtrees_by_size(n2s, recurse=True,
+                                             reverse=reverse)
 
     def add_child(self, child):
         assert child not in self.children
@@ -40,18 +44,8 @@ class Node:
         child.parent = None
         self.nchildren -= 1
 
-##     def leaves(self, v=None):
-##         if v is None:
-##             v = []
-##         if not self.children:
-##             v.append(self)
-##         else:
-##             for child in self.children:
-##                 child.leaves(v)
-##         return v
-
     def leaves(self):
-        return [ n for n in self.iternodes() if n.istip ]
+        return [n for n in self.iternodes() if n.istip]
 
     def iternodes(self, order=POSTORDER, v=None):
         """
@@ -141,7 +135,7 @@ class Node:
                 n = n.parent
             else:
                 break
-            
+
     def subtree_mapping(self, labels, clean=False):
         """
         find the set of nodes in 'labels', and create a new tree
@@ -151,7 +145,7 @@ class Node:
         return value is a mapping of old nodes to new nodes and vice versa.
         """
         d = {}
-        oldtips = [ x for x in self.leaves() if x.label in labels ]
+        oldtips = [x for x in self.leaves() if x.label in labels]
         for tip in oldtips:
             path = list(tip.rootpath())
             for node in path:
@@ -177,7 +171,8 @@ class Node:
             while 1:
                 if n.nchildren == 1:
                     oldnode = d[n]
-                    del d[oldnode]; del d[n]
+                    del d[oldnode]
+                    del d[n]
                     child = n.children[0]
                     child.parent = None
                     child.isroot = True
@@ -186,7 +181,7 @@ class Node:
                     n = child
                 else:
                     break
-                    
+
             for tip in oldtips:
                 newnode = d[tip]
                 while 1:
@@ -201,14 +196,15 @@ class Node:
                             parent = newnode.parent
                             parent.remove_child(newnode)
                             parent.add_child(child)
-                        del d[oldnode]; del d[newnode]
+                        del d[oldnode]
+                        del d[newnode]
                     if not newnode.parent:
                         break
-            
+
         return d
-        
+
     def get_sisters(self):
-        if self.parent == None:
+        if self.parent is None:
             return
         ch = self.parent.children
         sisters = []
@@ -216,6 +212,7 @@ class Node:
             if i != self:
                 sisters.append(i)
         return sisters
+
 
 def node2size(node, d=None):
     "map node and descendants to number of descendant tips"
@@ -229,21 +226,23 @@ def node2size(node, d=None):
     d[node] = size
     return d
 
+
 def reroot(oldroot, newroot):
     oldroot.isroot = False
     newroot.isroot = True
-    v = [] #path to the root
+    v = []  # path to the root
     n = newroot
     while 1:
         v.append(n)
-        if not n.parent: break
+        if not n.parent:
+            break
         n = n.parent
-    #print [ x.label for x in v ]
+    # print [ x.label for x in v ]
     v.reverse()
     for i, cp in enumerate(v[:-1]):
         node = v[i+1]
         # node is current node; cp is current parent
-        #print node.label, cp.label
+        # print node.label, cp.label
         cp.remove_child(node)
         node.add_child(cp)
         cp.length = node.length
@@ -261,33 +260,34 @@ def getMRCA(innames, tree):
             for i in range(len(tree.leaves())):
                 if tree.leaves()[i].label == name:
                     outgroup.append(tree.leaves()[i])
-                    #print tree.leaves[i].label
+                    # print tree.leaves[i].label
         cur2 = None
         tempmrca = None
         cur1 = outgroup.pop()
-        while len(outgroup)>0:
+        while len(outgroup) > 0:
             cur2 = outgroup.pop()
-            tempmrca = getMRCATraverse(cur1,cur2)
+            tempmrca = getMRCATraverse(cur1, cur2)
             cur1 = tempmrca
         mrca = cur1
     return mrca
 
+
 def getMRCATraverse(curn1, curn2):
     mrca = None
-    #get path to root for first node
+    # get path to root for first node
     path1 = []
     parent = curn1
     path1.append(parent)
-    while parent != None:
-        path1.append(parent);
-        if parent.parent != None:
+    while parent is not None:
+        path1.append(parent)
+        if parent.parent is not None:
             parent = parent.parent
         else:
             break
-    #find first match between this node and the first one
+    # find first match between this node and the first one
     parent = curn2
-    x = True;
-    while x == True:
+    x = True
+    while x:
         for i in range(len(path1)):
             if parent == path1[i]:
                 mrca = parent
@@ -295,18 +295,18 @@ def getMRCATraverse(curn1, curn2):
                 break
         parent = parent.parent
     return mrca
-    
+
+
 def getMRCATraverseFromPath(path1, curn2):
     mrca = None
-    #find first match between this node and the first one
+    # find first match between this node and the first one
     parent = curn2
-    x = True;
-    while x == True:
+    x = True
+    while x:
         for i in range(len(path1)):
             if parent == path1[i]:
                 mrca = parent
                 x = False
                 break
         parent = parent.parent
-    return mrca   
-    
+    return mrca

@@ -1,9 +1,11 @@
-#! /usr/bin/python3 
+#! /usr/bin/python3
 
 import sys
 import os
 
-def parse_fasta(path): # courtesy of Jonathan Chang https://gist.github.com/jonchang/6471846
+
+# courtesy of Jonathan Chang https://gist.github.com/jonchang/6471846
+def parse_fasta(path):
     """Given a path tries to parse a fasta file. Returns an iterator which
     yields a (name, sequence) tuple"""
     with open(path) as handle:

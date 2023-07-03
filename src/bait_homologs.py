@@ -3,9 +3,7 @@
 import os
 import sys
 import argparse
-import shutil
 import newick3
-import phylo3
 from utils import parse_fasta
 from search_proteomes import search_proteomes
 from fasta_to_tree import fasta_to_tree
@@ -26,98 +24,16 @@ def check_bait_presence(seqlist, tree):
         return False
 
 
-def check_same_tree(tree1, tree2):
-    with open(tree1, "r") as inf1:
-        tre1 = newick3.parse(inf1.readline())
-    taxa1 = get_front_labels(tre1)
-    with open(tree2, "r") as inf2:
-        tre2 = newick3.parse(inf2.readline())
-    taxa2 = get_front_labels(tre2)
-    if taxa1 == taxa2:
-        return True
-    else:
-        return False
-
-
-def sub_loop(fa, alner, treeblder, abscut, relcut, nt, ignore=[],
-             mask=True, para=True):
-    fasta_to_tree(fa, nt, alner, treeblder)
-    trim_tree(fa + "." + alner + ".aln-cln." + treeblder + ".tre", relcut,
-              abscut)
+def fasta_to_subtree(fa, alner, treblder, relcut, abscut, intcut, mintaxa,
+                     nt, ignore=[], mask=True, para=True, accurate=False):
+    cln, t = fasta_to_tree(fa, nt, alner, treblder, accurate)
+    tt = trim_tree(t, relcut, abscut)
     if mask:
-        mask_monophyly(fa + "." + alner + ".aln-cln." + treeblder + ".tre.tt",
-                       fa + "." + alner + ".aln-cln", para, ignore)
-
-
-def main_loop(bait, fa, alner, treeblder, abscut, relcut, intcut, mintaxa,
-              nt, ignore=[], mask=True, para=True, iterate=False):
-    bait_seqs = [key for key in dict([x for x in parse_fasta(bait)]).keys()]
-    fasta_to_tree(fa, nt, alner, treeblder)
-    trim_tree(fa + "." + alner + ".aln-cln." + treeblder + ".tre", relcut,
-              abscut)
-    if mask:
-        mask_monophyly(fa + "." + alner + ".aln-cln." + treeblder + ".tre.tt",
-                       fa + "." + alner + ".aln-cln", para, ignore)
-        subtrees = cut_internal_branches(fa + "." + alner + ".aln-cln." +
-                                         treeblder + ".tre.tt.mm", intcut,
-                                         mintaxa)
+        ttmm = mask_monophyly(tt, cln, para, ignore)
+        subtrees = cut_internal_branches(ttmm, intcut, mintaxa)
     else:
-        subtrees = cut_internal_branches(fa + "." + alner + ".aln-cln." +
-                                         treeblder + ".tre.tt", intcut,
-                                         mintaxa)
-    print(subtrees)
-    if subtrees is not None and len(subtrees) > 1:
-        for t in subtrees:
-            if check_bait_presence(bait_seqs, t):
-                print(bait + " in " + t)
-                newfa = write_fasta_from_tree(fa, t)
-                main_loop(bait, newfa, alner, treeblder, abscut, relcut,
-                          intcut, mintaxa, nt, ignore, mask, para, iterate)
-            else:
-                os.remove(t)
-    else:
-        if iterate:
-            print("No more subtrees to cut. Iterating tip trimming and \
-                   monophyletic masking until topology stabilises.")
-            newfa = write_fasta_from_tree(fa, subtrees[0])
-            tree1 = subtrees[0]
-            name = subtrees[0].split(".")[0]+"_m_1"
-            print(ignore)
-            sub_loop(newfa, alner, treeblder, abscut, relcut, nt, ignore,
-                     mask, para)
-            if mask:
-                shutil.copyfile(newfa + "." + alner + ".aln-cln." + treeblder +
-                                ".tre.tt.mm", name+".tre")
-            else:
-                shutil.copyfile(newfa + "." + alner + ".aln-cln." + treeblder +
-                                ".tre.tt", name + ".tre")
-            tree2 = name + ".tre"
-            going = True
-            if check_same_tree(tree1, tree2):
-                going = False
-            counter = 2
-            while going:
-                tree1 = tree2
-                name = tree1.split(".")[0].rsplit("_", 1)[0]+"_"+str(counter)
-                newfa = write_fasta_from_tree(fa, tree1)
-                print(ignore)
-                sub_loop(newfa, alner, treeblder, abscut, relcut, nt, ignore,
-                         mask, para)
-                if mask:
-                    shutil.copyfile(newfa + "." + alner + ".aln-cln." +
-                                    treeblder + ".tre.tt.mm", name+".tre")
-                else:
-                    shutil.copyfile(newfa + "." + alner + ".aln-cln." +
-                                    treeblder + ".tre.tt", name+".tre")
-                tree2 = name+".tre"
-                counter += 1
-                if check_same_tree(tree1, tree2):
-                    going = False
-            print("Finished iteration")
-            _ = write_fasta_from_tree(fa, tree2)
-        else:
-            _ = write_fasta_from_tree(fa, subtrees[0])
-            print("No iteration requested. Finished")
+        subtrees = cut_internal_branches(tt, intcut, mintaxa)
+    return subtrees
 
 
 if __name__ == "__main__":
@@ -125,11 +41,20 @@ if __name__ == "__main__":
         sys.argv.append("-h")
 
     parser = argparse.ArgumentParser()
+    parser.add_argument("-b", "--blast", help="Use blastp for similarity \
+                        search instead of default hmmsearch",
+                        action="store_true")
+    parser.add_argument("--min_bitscore", help="Filter blastp hits with \
+                        bitscore lower than min_bitscore (default 30.0)",
+                        type=float, default=30.0)
+    parser.add_argument("--threshold", help="Filter blastp hits with bitscore \
+                        lower than threshold * max bitscore of query \
+                        (default 0.1)", type=float, default=0.1)
     parser.add_argument("-a", "--aligner", help="Alignment software to use: \
                         mafft (auto, default), fsa (defaults to --fast)",
                         default="mafft")
     parser.add_argument("-t", "--tree_builder", help="Tree building software \
-                        to use: fasttree (wag, default), iqtree (defaults to \
+                        to use: fasttree (wag, default), raxml-ng (defaults to\
                         WAG+G)", default="fasttree")
     parser.add_argument("-tc", "--tip_abs_cutoff", help="Absolute branch \
                         length cutoff for trimming tips. Tips longer than \
@@ -157,10 +82,14 @@ if __name__ == "__main__":
                         names (one per line) to ignore while masking \
                         monophyletic tips. Defaults masks all taxa",
                         default=None)
-    parser.add_argument("-it", "--iterate", help="If this flag is selected, \
-                        tip trimming and monophyletic masking will be \
-                        iterated until topology has stabilised following \
-                        final subtree cut", action="store_true")
+    parser.add_argument("-po", "--prune_og", help="Whether to extract rooted \
+                        ingroup clades containing baits after first round of \
+                        tree inference (requires OG file, default off)",
+                        action="store_true")
+    parser.add_argument("-og", "--outgroups", help="File containing outgroup \
+                        taxon labels, one per line")
+    parser.add_argument("-it", "--iterate", help="how many times to iterate \
+                        tree building and cleaning", type=int, default=3)
     parser.add_argument("-o", "--output_dir", help="Directory to put output. \
                         Defaults to current directory", default=os.getcwd())
     parser.add_argument("-k", "--keep", help="Number of hits to keep (default \
@@ -175,13 +104,74 @@ if __name__ == "__main__":
         name = args.bait.split("/")[-1].split(".")[0]
     else:
         name = args.bait.split(".")[0]
+
+    BAITS = [key for key in dict([x for x in parse_fasta(args.bait)]).keys()]
+
     if args.ignore_file is not None:
         IGNORE = get_names_to_exclude(args.ignore_file)
     else:
         IGNORE = []
-    search_proteomes(args.bait, args.database_dir, args.output_dir,
-                     blast=False, nhits=args.keep)
-    main_loop(args.bait, name+".hmmsearch.fa", args.aligner, args.tree_builder,
-              args.tip_abs_cutoff, args.tip_rel_cutoff, args.internal_cutoff,
-              args.min_taxa, args.threads, IGNORE, args.mask,
-              args.mask_paraphyly, args.iterate)
+
+    if args.prune_og:
+        if not args.outgroups:
+            sys.stderr.write("Must specify outgroups with -og/--outgroups")
+            sys.exit()
+        OUTGROUPS = []
+        with open(args.outgroups, "r") as f:
+            for line in f:
+                OUTGROUPS.append(line.strip())
+
+    hits = search_proteomes(args.bait, args.database_dir, args.output_dir,
+                            args.blast, args.keep, args.threads,
+                            args.min_bitscore, args.threshold)
+
+    iters = args.iterate
+    # first round
+    subtrees = fasta_to_subtree(hits, args.aligner, args.tree_builder,
+                                args.tip_rel_cutoff, args.tip_abs_cutoff,
+                                args.internal_cutoff, args.min_taxa,
+                                args.threads, IGNORE, args.mask,
+                                args.mask_paraphyly)
+    fas = []
+    for t in subtrees:
+        if check_bait_presence(BAITS, t):
+            fas.append(write_fasta_from_tree(hits, t))
+    iters -= 1  # now 2 in default
+    while iters > 0:
+        subtrees = []
+        if iters == 1:  # last round, do mafft --genafpair and iqtree
+            for f in fas:
+                subtrees += fasta_to_subtree(f, args.aligner,
+                                             "raxml-ng",
+                                             args.tip_rel_cutoff,
+                                             args.tip_abs_cutoff,
+                                             args.internal_cutoff,
+                                             args.min_taxa,
+                                             args.threads, IGNORE,
+                                             args.mask,
+                                             args.mask_paraphyly,
+                                             accurate=True)
+            for t in subtrees:
+                if check_bait_presence(BAITS, t):
+                    fas.append(write_fasta_from_tree(hits, t))
+                else:
+                    os.remove(t)  # comment out this if you want to keep
+        else:
+            for f in fas:
+                subtrees += fasta_to_subtree(f, args.aligner,
+                                             args.tree_builder,
+                                             args.tip_rel_cutoff,
+                                             args.tip_abs_cutoff,
+                                             args.internal_cutoff,
+                                             args.min_taxa,
+                                             args.threads, IGNORE,
+                                             args.mask,
+                                             args.mask_paraphyly)
+            fas = []
+            for t in subtrees:
+                if check_bait_presence(BAITS, t):
+                    fas.append(write_fasta_from_tree(hits, t))
+                else:
+                    os.remove(t)  # comment out this if you want to keep
+        iters -= 1
+    print("Done!")

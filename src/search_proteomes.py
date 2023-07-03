@@ -1,10 +1,11 @@
-#! /usr/bin/python3
+#! /usr/bin/python
 
 import sys
 import os
 import subprocess
 import argparse
 import shutil
+import shlex
 from utils import parse_fasta
 
 
@@ -20,6 +21,7 @@ def fasta_to_stockholm(inf):
     else:
         print("Aligning baits with FSA")
         cmd = ["fsa", "--fast", "--stockholm", inf]
+        print(subprocess.list2cmdline(cmd))
         out = subprocess.run(cmd, shell=False, capture_output=True,
                              text=True).stdout
         with open(inf + ".sto", "w") as outf:
@@ -27,30 +29,40 @@ def fasta_to_stockholm(inf):
 
 
 def stockholm_to_profile(sto):
-    print("Building HMM profile")
+    print("Building hmm profile")
     cmd = ["hmmbuild", sto[:-3] + "hmm", sto]
+    print(subprocess.list2cmdline(cmd))
     subprocess.run(cmd, shell=False)
 
 
-def search_db(hmm, dbf):
-    print("Searching Database")
+def hmmsearch_db(hmm, dbf):
+    print("Searching database with hmm")
     cmd = ["hmmsearch", "--noali", "--tblout", dbf + ".out", hmm, dbf]
+    print(subprocess.list2cmdline(cmd))
     subprocess.run(cmd, shell=False)
 
 
 def make_blast_db(dbf):
     print("Making blastdb")
-    cmd = ["makeblastdb", "-in", dbf, "-dbtype prot", "-parse_seqids"]
+    cmd = ["makeblastdb", "-in", dbf, "-dbtype", "prot", "-parse_seqids"]
+    print(subprocess.list2cmdline(cmd))
     subprocess.run(cmd, shell=False)
 
 
-def blast_db(bait, dbf):
-    print("Searching Database")
-    cmd = [""]
+def blast_db(bait, dbf, nt):
+    print("Searching database with blastp")
+    blastout = dbf + ".blastp.outfmt6"
+    cmd = ["blastp", "-query", bait, "-db", dbf, "-num_threads", str(nt),
+           "-evalue", "10", "-out", dbf + ".blastp.outfmt6", "-outfmt",
+           "6 qseqid sseqid evalue bitscore"]
+    print(subprocess.list2cmdline(cmd))
+    subprocess.run(cmd, shell=False)
+    return blastout
 
 
-def parse_search_out(outf):
-    print("Parsing search output")
+def parse_hmmsearch_out(outf):
+    """"Parse hmmsearch output with -tblout"""
+    print("Parsing hmmsearch output")
     hits = open(outf[:-3] + "hits", "w")
     with open(outf, "r") as search_out:
         for line in search_out:
@@ -59,54 +71,115 @@ def parse_search_out(outf):
     hits.close()
 
 
-def gather_sequences(inf, hitsf, dbf, outf, nhits=None):
+def parse_blastp_out(outf, min_bitscore=30.0, thresh=0.1):
+    """Parse blastp outfmt 6 with columns qseqid sseqid evalue bitscore
+    By default ignores hits with bitscore < 30.0 and < 0.1 * max bitscore of
+    that query"""
+    sys.stderr.write("Parsing blastp output\n")
+    hitsfile = open(outf[:-7] + "hits", "w")
+    hits = []
+    with open(outf, "r") as f:
+        for line in f:
+            # out is four columns, qid, sid, evalue, bitscore
+            line = line.strip().split("\t")
+            q, h, b = line[0], line[1], float(line[3])
+            if q != h and b > min_bitscore:  # filter self and lower than min
+                hits.append((h, b))
+    highest = 0.0
+    currentq = ""
+    hits_filtered = []  # contains hits after bitscore filtering
+    for h in hits:
+        # here we filter hits with respect to highest score of that query
+        if h[0] == currentq:
+            continue
+        else:
+            currentq = h[0]
+            highest = h[1]
+        if h[1] > thresh * highest:
+            hits_filtered.append(h)
+    hits_filtered = [x[0] for x in sorted(hits_filtered, key=lambda x: x[1],
+                                          reverse=True)]
+    hits_unique = list(set(hits_filtered))
+    for h in hits_unique:
+        hitsfile.write(h + "\n")
+    hitsfile.close()
+
+
+def gather_sequences(hitsf, dbf, outf, nhits: int = None):
+    """Takes a per db hits file and agglomerates sequences for hits,
+    optionally with a numerical cutoff of hits to keep"""
     print("Compiling sequences")
     seqout = open(outf, "a")
     if nhits is not None:
-        seql = open(hitsf, "r").readlines()[:nhits]
+        seql = [x.rstrip("\n") for x in open(hitsf, "r").readlines()[:nhits]]
     else:
-        seql = open(hitsf, "r").readlines()
+        seql = [x.rstrip("\n") for x in open(hitsf, "r").readlines()]
     dbdict = dict([x for x in parse_fasta(dbf)])
     for s in seql:
-        seqout.write(">" + s)
-        seqout.write(dbdict[s.rstrip("\n")] + "\n")
+        seqout.write(">" + s + "\n")
+        seqout.write(dbdict[s] + "\n")
     seqout.close()
 
 
-def search_proteomes(bait, database_dir, output_dir, blast=False, nhits=None):
+def search_proteomes(bait, database_dir, output_dir, blast=False, nhits=None,
+                     nt=1, min_bitscore=30.0, thresh=0.1):
+    # file name
     if "/" in bait:
         name = bait.split("/")[-1].split(".")[0]
     else:
         name = bait.split(".")[0]
-    if bait+".sto" not in os.listdir(os.getcwd()):
-        fasta_to_stockholm(bait)
-        stockholm_to_profile(bait + ".sto")
-    else:
-        try:
-            stockholm_to_profile(bait + ".sto")
-        except subprocess.CalledProcessError:
-            fasta_to_stockholm(bait)
-            stockholm_to_profile(bait + ".sto")
+
+    # collect individual sequence sets
     dblist = []
     for dirpath, _, filenames in os.walk(database_dir):
         for f in filenames:
-            if f.endswith(".pep.fa") or f.endswith(".cdhit"):
+            if f.endswith(".pep.fa") or f.endswith(".cdhit"):  # add suffix
                 dblist.append(os.path.abspath(os.path.join(dirpath, f)))
-    for db in dblist:
-        search_db(bait + ".hmm", db)
-        parse_search_out(db + ".out")
-        gather_sequences(bait, db + ".hits", db,
-                         os.path.abspath(output_dir) +
-                         "/" + name + ".hmmsearch.fa",
-                         nhits=nhits)
-        os.remove(db + ".out")
-        os.remove(db + ".hits")
+
+    if blast:
+        outfile = os.path.abspath(output_dir) + "/" + name + ".blastp.fa"
+        if os.path.isfile(outfile):
+            os.remove(outfile)  # prevent appending partial file
+        for db in dblist:
+            blastdbsuf = [".pdb", ".phr", ".pin", ".pog", ".pos", ".pot",
+                          ".psq", ".ptf", ".pto"]
+            for s in blastdbsuf:
+                if not os.path.isfile(db + s):
+                    make_blast_db(db)
+            blastout = blast_db(bait, db, nt)
+            parse_blastp_out(blastout, min_bitscore, thresh)
+            gather_sequences(db + ".blastp.hits", db, outfile, nhits)
+            os.remove(blastout)
+            os.remove(db + ".blastp.hits")
+    else:
+        outfile = os.path.abspath(output_dir) + "/" + name + ".hmmsearch.fa"
+        if os.path.isfile(outfile):
+            os.remove(outfile)  # prevent appending partial file
+        stockholm = bait + ".sto"
+        if stockholm not in os.listdir(os.getcwd()):
+            fasta_to_stockholm(bait)
+            stockholm_to_profile(stockholm)
+        else:
+            try:
+                stockholm_to_profile(stockholm)
+            except subprocess.CalledProcessError:
+                fasta_to_stockholm(bait)
+                stockholm_to_profile(stockholm)
+        for db in dblist:
+            hmmsearch_db(bait + ".hmm", db)
+            parse_hmmsearch_out(db + ".out")
+            gather_sequences(db + ".hits", db,
+                             outfile,
+                             nhits=nhits)
+            os.remove(db + ".out")
+            os.remove(db + ".hits")
+
     baitdict = dict([x for x in parse_fasta(bait)])
-    with open(os.path.abspath(output_dir) + "/" + name +
-              ".hmmsearch.fa", "a") as outf:
+    with open(outfile, "a") as outf:  # append baits back to search results
         for key, value in baitdict.items():
             outf.write(">" + key + "\n")
             outf.write(value + "\n")
+    return outfile
 
 
 if __name__ == "__main__":
@@ -120,7 +193,21 @@ if __name__ == "__main__":
     parser.add_argument("output_dir", help="Directory to put output")
     parser.add_argument("-k", "--keep", help="Number of hits to retain \
                         (default all)", type=int)
+    parser.add_argument("-b", "--blast", help="Use blastp for similarity \
+                        searches, instead of hmmer", action="store_true")
+    parser.add_argument("--min_bitscore", help="For blast. Filter hits with \
+                        bitscores lower than min_bitscore (default 30.0)",
+                        type=float, default=30.0)
+    parser.add_argument("--threshold", help="For blast. Filter hits with \
+                        bitscores lower than threshold * max bitscore of \
+                        query (default 0.1)", type=float, default=0.1)
+    parser.add_argument("-t", "--threads", help="Number of threads", type=int,
+                        default=1)
+    # parser.add_argument("")
     args = parser.parse_args()
 
-    search_proteomes(args.bait, args.database_dir, args.output_dir,
-                     blast=False, nhits=args.keep)
+    # _ = search_proteomes(args.bait, args.database_dir, args.output_dir,
+    #                      blast=False, nhits=args.keep)
+    _ = search_proteomes(args.bait, args.database_dir, args.output_dir,
+                         args.blast, args.keep, args.threads,
+                         args.min_bitscore, args.threshold)

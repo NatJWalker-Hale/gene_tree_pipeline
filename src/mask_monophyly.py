@@ -10,7 +10,7 @@ from utils import parse_fasta
 
 
 def get_names_to_exclude(ignoref):
-    ignore = [l.strip() for l in open(ignoref, "r").readlines()]
+    ignore = [line.strip() for line in open(ignoref, "r").readlines()]
     return ignore
 
 
@@ -31,7 +31,12 @@ def mask_monophyletic_tips(curroot, unamb_chrDICT, ignore=[]):
                     else:
                         node = node.prune()
                     if len(curroot.leaves()) >= 4:
-                        if (node == curroot and node.nchildren == 2) or (node != curroot and node.nchildren == 1):
+                        if (
+                            node == curroot
+                            and node.nchildren == 2
+                            ) or (
+                                node != curroot
+                                and node.nchildren == 1):
                             node, curroot = remove_kink(node, curroot)
                     going = True
                     break
@@ -58,7 +63,12 @@ def mask_paraphyletic_tips(curroot, unamb_chrDICT, ignore=[]):
                     else:
                         node = node.prune()
                     if len(curroot.leaves()) >= 4:
-                        if (node == curroot and node.nchildren == 2) or (node != curroot and node.nchildren == 1):
+                        if (
+                            node == curroot
+                            and node.nchildren == 2
+                            ) or (
+                                node != curroot
+                                and node.nchildren == 1):
                             node, curroot = remove_kink(node, curroot)
                     going = True
                     break
@@ -81,8 +91,10 @@ def mask_monophyly(tre, clnaln, para=True, ignore=[]):
     with open(tre, "r") as inf:
         intree = newick3.parse(inf.readline())
     curroot = mask(intree, clnaln, para, ignore)
-    with open(tre+".mm", "w") as outf:
+    masked = tre + ".mm"
+    with open(masked, "w") as outf:
         outf.write(newick3.tostring(curroot)+";\n")
+    return masked
 
 
 if __name__ == "__main__":
@@ -111,4 +123,4 @@ if __name__ == "__main__":
         ignore = get_names_to_exclude(args.exclude_file)
     else:
         ignore = []
-    mask_monophyly(args.tree, args.aln_cln, para, ignore)
+    _ = mask_monophyly(args.tree, args.aln_cln, para, ignore)

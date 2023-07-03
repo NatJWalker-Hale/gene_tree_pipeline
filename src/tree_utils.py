@@ -114,7 +114,7 @@ def get_ortho_from_rooted_inclade(inclade):
             if num_taxa == num_tips:  # no taxon repeats
                 orthologs.append(clade)
             else:  # has duplicated taxa
-                for node in clade.iternodes(order=0): #PREORDER, root to tip
+                for node in clade.iternodes(order=0):  # PREORDER, root to tip
                     if node.istip:
                         continue
                     # traverse the tree from root to tip
@@ -123,65 +123,78 @@ def get_ortho_from_rooted_inclade(inclade):
                     name_set1 = set(get_front_names(child1))
                     if len(name_set0.intersection(name_set1)) > 0:
                         if node == clade:
-                            newclades += [child0,child1] #break by bifid at the base
-                        elif len(name_set0) > len(name_set1): #cut the side with less taxa
+                            newclades += [child0, child1]
+                            # break by bifid at the base
+                        elif len(name_set0) > len(name_set1):
+                            # cut the side with less taxa
                             node.remove_child(child1)
                             child1.prune()
-                            node,clade = remove_kink(node,clade) #no rerooting here
-                            newclades += [clade,child1]
+                            node, clade = remove_kink(node, clade)
+                            # no rerooting here
+                            newclades += [clade, child1]
                         else:
                             node.remove_child(child0)
                             child0.prune()
-                            node,clade = remove_kink(node,clade) #no rerooting here
-                            newclades += [clade,child0]
+                            node, clade = remove_kink(node, clade)
+                            # no rerooting here
+                            newclades += [clade, child0]
                         break
-        if newclades == []: break
+        if newclades == []:
+            break
         clades = newclades
     return orthologs
 
-def extract_rooted_ingroup_clades(root,ingroups,outgroups,min_ingroup_taxa):
+
+def extract_rooted_ingroup_clades(root, ingroups, outgroups, min_ingroup_taxa):
     """
     input a tree with ingroups and at least 1 outgroups
     output a list of rooted ingroup clades
     """
     inclades = []
     while True:
-        max_score,direction,max_node = 0,"",None
+        max_score, direction, max_node = 0, "", None
         for node in root.iternodes():
-            front,back = 0,0
+            front, back = 0, 0
             front_names_set = set(get_front_names(node))
             for name in front_names_set:
                 if name in outgroups:
                     front = -1
                     break
-                elif name in ingroups: front += 1
-                else: sys.exit("Check taxonID "+name)
-            back_names_set = set(get_back_names(node,root))
+                elif name in ingroups:
+                    front += 1
+                else:
+                    sys.exit("Check taxonID "+name)
+            back_names_set = set(get_back_names(node, root))
             for name in back_names_set:
                 if name in outgroups:
                     back = -1
                     break
-                elif name in ingroups: back += 1
-                else: sys.exit("Check taxonID "+name)
+                elif name in ingroups:
+                    back += 1
+                else:
+                    sys.exit("Check taxonID "+name)
             if front > max_score:
-                max_score,direction,max_node = front,"front",node
+                max_score, direction, max_node = front, "front", node
             if back > max_score:
-                max_score,direction,max_node = back,"back",node
-        #print max_score,direction
+                max_score, direction, max_node = back, "back", node
+        # print max_score,direction
         if max_score >= min_ingroup_taxa:
             if direction == "front":
                 inclades.append(max_node)
                 kink = max_node.prune()
                 if len(root.leaves()) > 3:
-                    newnode,root = remove_kink(kink,root)
-                else: break
+                    newnode, root = remove_kink(kink, root)
+                else:
+                    break
             elif direction == "back":
                 par = max_node.parent
                 par.remove_child(max_node)
                 max_node.prune()
-                inclades.append(phylo3.reroot(root,par))#flip dirction
+                inclades.append(phylo3.reroot(root, par))  # flip dirction
                 if len(max_node.leaves()) > 3:
-                    max_node,root = remove_kink(max_node,max_node)
-                else: break
-        else: break
+                    max_node, root = remove_kink(max_node, max_node)
+                else:
+                    break
+        else:
+            break
     return inclades
