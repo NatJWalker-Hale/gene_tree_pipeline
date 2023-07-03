@@ -102,3 +102,15 @@ This generates a lot of files, but we'll explore the main ones:
 - `bait_1.subtree` is the subtree containing the baits resulting from internal branch cutting on tip-trimmed, monophyletically-masked tree, and `bait_1.pep.fa` is the corresponding FASTA.
 
 From here, the pipeline proceeds through two (by default) further iterations, appending _1, _2, etc. to the subtrees each time. In our example, there is only one subtree containing the baits, so we end up with bait_1_1_1.subtree and bait_1_1_1.pep.fa, containing the final subtree and final FASTA after three iterations.
+
+## miscellaneous options
+
+Most scripts can also be used standalone - for example `search_proteomes.py` can be used as a general wrapper for hmmsearch or blastp searching of a specified proteome(s). For any subscript, see the available options by running e.g. `python3 search_proteomes.py`.
+
+Resulting trees and FASTAs can be automatically renamed from codes to any other name by including a `taxon_table` file where each line is tab-separated code and corresponding name. The script `taxon_name.py` can be used as follows:
+
+```
+python ../src/taxon_name.py bait_1_1_1.pep.fa taxon_table
+```
+
+An example `taxon_table` file is included in `/example/`.
