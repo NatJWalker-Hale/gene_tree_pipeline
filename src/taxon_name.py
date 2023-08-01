@@ -19,7 +19,10 @@ def get_taxon_code_name_corres(inf: str) -> dict:
 
 def relabel_tree(root: phylo3.Node, taxon_dict: dict) -> phylo3.Node:
     for n in root.leaves():
-        code, seq = n.label.split("@")
+        try:
+            code, seq = n.label.split("@")
+        except ValueError:
+            continue  # don't rename e.g. baits
         try:
             taxon = taxon_dict[code]
             print(n.label + "\t" + "@".join([taxon, seq]))
