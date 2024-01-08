@@ -133,15 +133,19 @@ def search_proteomes(bait, database_dir, output_dir, blast=False, nhits=None,
 
     # collect individual sequence sets
     dblist = []
+    outf = open("database.txt", "w")
     for dirpath, _, filenames in os.walk(database_dir):
         for f in filenames:
             if f.endswith(".pep.fa") or f.endswith(".cdhit"):  # add suffix
                 if dbkeep is not None:
                     if f in dbkeep:
                         dblist.append(os.path.abspath(os.path.join(dirpath,
-                                                                   f)))
+                                                                    f)))
+                        outf.write(f"{f}\n")
                 else:
                     dblist.append(os.path.abspath(os.path.join(dirpath, f)))
+                    outf.write(f"{f}\n")
+    outf.close()
 
     if dbkeep is not None:
         logging.info(f"searching only {len(dblist)} sequence DBs "

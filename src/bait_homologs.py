@@ -131,8 +131,12 @@ if __name__ == "__main__":
 
     if args.ignore_file is not None:
         IGNORE = get_names_to_exclude(args.ignore_file)
+        with open("ignored.txt", "w") as outf:
+            for i in IGNORE:
+                outf.write(f"{i}\n")
         logging.info(f"during masking, ignoring {len(IGNORE)} taxa in " 
                      f"{args.ignore_file}")
+        logging.info(f"writing to ignored.txt")
     else:
         IGNORE = []
 
@@ -168,7 +172,9 @@ if __name__ == "__main__":
     fas = []
     for t in subtrees:
         if check_bait_presence(BAITS, t):
-            fas.append(write_fasta_from_tree(hits, t))
+            newf = write_fasta_from_tree(hits, t)
+            logging.info(f"found baits in {t}, writing fasta to {newf}")
+            fas.append(newf)
         else:
             os.remove(t)
             # comment out this if you want to keep
