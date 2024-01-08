@@ -84,13 +84,14 @@ Files for an example run can be found in [/example/](https://github.com/NatJWalk
 We conduct a run, using defaults and activating monophyletic masking, with the following command:
 
 ```
-python3 ../src/bait_paralogs.py -m -mp -if ignore_file.txt bait.pep.fa pep/
+python3 ../src/bait_homologs.py -m -mp -if ignore_file.txt bait.pep.fa pep/
 ```
 
 ### output
 
 This generates a lot of files, but we'll explore the main ones:
 
+- `log.txt` contains a full record of the run, including input command.
 - `bait.pep.fa.sto` contains the stockholm-formatted pairwise alignment of the two baits. You can view this with e.g. belvu.
 - `bait.pep.fa.hmm` contains the HMM from hmmbuild.
 - `bait.hmmsearch.fa` contains the amalgamated sequences from searching each of the protein databases with hmmsearch, plus the baits.

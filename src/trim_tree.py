@@ -4,7 +4,7 @@ import sys
 import os
 import argparse
 import newick3
-import phylo3
+import logging
 from tree_utils import *
 
 
@@ -19,7 +19,7 @@ def check_countrast_outlier(node0, node1, above0, above1, relative_cutoff):
             return node1
     return None
 
-
+# from Y. Yang https://bitbucket.org/yangya/adh_2016/src/master/trim_tips.py
 def remove_a_tip(root, tip_node):
     node = tip_node.prune()
     if len(root.leaves()) > 3:
@@ -29,7 +29,7 @@ def remove_a_tip(root, tip_node):
         print("Fewer than four tips left")
         return None
 
-
+# from Y. Yang https://bitbucket.org/yangya/adh_2016/src/master/trim_tips.py
 def trim(curroot, relative_cutoff, absolute_cutoff):
     if curroot.nchildren == 2:
         temp, root = remove_kink(curroot, curroot)
@@ -88,12 +88,17 @@ def trim(curroot, relative_cutoff, absolute_cutoff):
 def trim_tree(inf, relative_cut=1.0, absolute_cut=1.5):
     with open(inf, "r") as infile:
         intree = newick3.parse(infile.readline())
+    in_tips = len(intree.leaves())
     outtree = trim(intree, float(relative_cut), float(absolute_cut))
-    if outtree is not None:
-        out = inf + ".tt"
-        with open(out, "w") as outfile:
-            outfile.write(newick3.tostring(outtree)+";\n")
-        return out
+    out_tips = len(outtree.leaves())
+    # if outtree is not None:
+    out = inf + ".tt"
+    logging.info(f"trimming tips in {inf} longer than {absolute_cut} "
+                f"or >10x length of sister and longer than {relative_cut}")
+    logging.info(f"trimmed {in_tips - out_tips} tip(s), writing to {out}")
+    with open(out, "w") as outfile:
+        outfile.write(newick3.tostring(outtree)+";\n")
+    return out
 
 
 if __name__ == "__main__":

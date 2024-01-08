@@ -1,10 +1,9 @@
 #! /usr/bin/python3
 
 import sys
-import os
 import argparse
 import newick3
-import phylo3
+import logging
 from tree_utils import get_name, remove_kink
 from utils import parse_fasta
 
@@ -90,8 +89,15 @@ def mask(curroot, clnfile, para=True, ignore=[]):
 def mask_monophyly(tre, clnaln, para=True, ignore=[]):
     with open(tre, "r") as inf:
         intree = newick3.parse(inf.readline())
+    in_tips = len(intree.leaves())
     curroot = mask(intree, clnaln, para, ignore)
+    out_tips = len(curroot.leaves())
     masked = tre + ".mm"
+    if para:
+        logging.info(f"masking monophyletic and paraphyletic tips in {tre}")
+    else:
+        logging.info(f"masking monophyletic tips in {tre}")
+    logging.info(f"masked {in_tips - out_tips} tips, writing to {masked}")
     with open(masked, "w") as outf:
         outf.write(newick3.tostring(curroot)+";\n")
     return masked

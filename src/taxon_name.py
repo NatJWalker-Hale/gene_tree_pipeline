@@ -38,7 +38,10 @@ def relabel_tree(root: phylo3.Node, taxon_dict: dict) -> phylo3.Node:
 def relabel_fasta(seq_dict: dict, taxon_dict: dict) -> dict:
     new_dict = {}
     for k, v in seq_dict.items():
-        code, seq = k.split("@")
+        try:
+            code, seq = k.split("@")
+        except ValueError:
+            new_dict[k] = v
         try:
             taxon = taxon_dict[code]
             print(k + "\t" + "@".join([taxon, seq]))

@@ -4,6 +4,7 @@ import sys
 import os
 import argparse
 import newick3
+import logging
 from tree_utils import get_front_names, remove_kink
 from shutil import copy
 
@@ -53,6 +54,7 @@ def cut_internal_branches(tre, brlencutoff=1.0, mintaxa=4):
     mintaxa = int(mintaxa)
     brlencutoff = float(brlencutoff)
     print("Cutting at branches longer than "+str(brlencutoff))
+    logging.info(f"cutting at branches longer than {brlencutoff} in {tre}")
     subtree_names = []
     with open(tre, "r") as inf:
         intree = newick3.parse(inf.readline())
@@ -62,6 +64,8 @@ def cut_internal_branches(tre, brlencutoff=1.0, mintaxa=4):
                           reverse=True, key=lambda x: count_taxa(x))
         if len(subtrees) == 0:
             print("No branches to cut in "+tre)
+            logging.info(f"no branches to cut in {tre}, writing input to "
+                         f"{tre.split('.')[0]}_1.subtree")
             subtree_names.append(tre.split(".")[0]+"_1.subtree")
         else:
             count = 0
@@ -77,6 +81,7 @@ def cut_internal_branches(tre, brlencutoff=1.0, mintaxa=4):
                     subtree_names.append(sub_name)
                     with open(sub_name, "w") as outfile:
                         outfile.write(newick3.tostring(t)+";\n")
+    logging.info(f"writing {len(subtree_names)} subtree(s)")
     return subtree_names
 
 

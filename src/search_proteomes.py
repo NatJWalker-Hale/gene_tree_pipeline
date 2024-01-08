@@ -5,7 +5,7 @@ import os
 import subprocess
 import argparse
 import shutil
-import shlex
+import logging
 from utils import parse_fasta
 
 
@@ -51,9 +51,9 @@ def make_blast_db(dbf):
 
 def blast_db(bait, dbf, nt):
     print("Searching database with blastp")
-    blastout = dbf + ".blastp.outfmt6"
+    blastout = dbf + "." + bait + ".blastp.outfmt6"
     cmd = ["blastp", "-query", bait, "-db", dbf, "-num_threads", str(nt),
-           "-evalue", "10", "-out", dbf + ".blastp.outfmt6", "-outfmt",
+           "-evalue", "10", "-out", blastout, "-outfmt",
            "6 qseqid sseqid evalue bitscore"]
     print(subprocess.list2cmdline(cmd))
     subprocess.run(cmd, shell=False)
@@ -76,7 +76,8 @@ def parse_blastp_out(outf, min_bitscore=30.0, thresh=0.1):
     By default ignores hits with bitscore < 30.0 and < 0.1 * max bitscore of
     that query"""
     sys.stderr.write("Parsing blastp output\n")
-    hitsfile = open(outf[:-7] + "hits", "w")
+    hitsfilename = outf[:-7] + "hits"
+    hitsfile = open(hitsfilename, "w")
     hits = []
     with open(outf, "r") as f:
         for line in f:
@@ -103,6 +104,7 @@ def parse_blastp_out(outf, min_bitscore=30.0, thresh=0.1):
     for h in hits_unique:
         hitsfile.write(h + "\n")
     hitsfile.close()
+    return hitsfilename
 
 
 def gather_sequences(hitsf, dbf, outf, nhits: int = None):
@@ -122,7 +124,7 @@ def gather_sequences(hitsf, dbf, outf, nhits: int = None):
 
 
 def search_proteomes(bait, database_dir, output_dir, blast=False, nhits=None,
-                     nt=1, min_bitscore=30.0, thresh=0.1):
+                     nt=1, min_bitscore=30.0, thresh=0.1, dbkeep=None):
     # file name
     if "/" in bait:
         name = bait.split("/")[-1].split(".")[0]
@@ -134,9 +136,22 @@ def search_proteomes(bait, database_dir, output_dir, blast=False, nhits=None,
     for dirpath, _, filenames in os.walk(database_dir):
         for f in filenames:
             if f.endswith(".pep.fa") or f.endswith(".cdhit"):  # add suffix
-                dblist.append(os.path.abspath(os.path.join(dirpath, f)))
+                if dbkeep is not None:
+                    if f in dbkeep:
+                        dblist.append(os.path.abspath(os.path.join(dirpath,
+                                                                   f)))
+                else:
+                    dblist.append(os.path.abspath(os.path.join(dirpath, f)))
 
+    if dbkeep is not None:
+        logging.info(f"searching only {len(dblist)} sequence DBs "
+                                 f"in DB list")
+    else:
+        logging.info(f"searching {len(dblist)} sequence DBs "
+                                 f"in {database_dir}")
+        
     if blast:
+        logging.info("using blastp")
         outfile = os.path.abspath(output_dir) + "/" + name + ".blastp.fa"
         if os.path.isfile(outfile):
             os.remove(outfile)  # prevent appending partial file
@@ -147,11 +162,12 @@ def search_proteomes(bait, database_dir, output_dir, blast=False, nhits=None,
                 if not os.path.isfile(db + s):
                     make_blast_db(db)
             blastout = blast_db(bait, db, nt)
-            parse_blastp_out(blastout, min_bitscore, thresh)
-            gather_sequences(db + ".blastp.hits", db, outfile, nhits)
+            hits = parse_blastp_out(blastout, min_bitscore, thresh)
+            gather_sequences(hits, db, outfile, nhits)
             os.remove(blastout)
-            os.remove(db + ".blastp.hits")
+            os.remove(hits)
     else:
+        logging.info("using hmmsearch")
         outfile = os.path.abspath(output_dir) + "/" + name + ".hmmsearch.fa"
         if os.path.isfile(outfile):
             os.remove(outfile)  # prevent appending partial file
@@ -203,11 +219,22 @@ if __name__ == "__main__":
                         query (default 0.1)", type=float, default=0.1)
     parser.add_argument("-t", "--threads", help="Number of threads", type=int,
                         default=1)
+    parser.add_argument("-dbl", "--dblist", help="Text file with files in \
+                        database_dir to to search, if not all, one per line")
     # parser.add_argument("")
     args = parser.parse_args()
 
     # _ = search_proteomes(args.bait, args.database_dir, args.output_dir,
     #                      blast=False, nhits=args.keep)
-    _ = search_proteomes(args.bait, args.database_dir, args.output_dir,
-                         args.blast, args.keep, args.threads,
-                         args.min_bitscore, args.threshold)
+    if args.dblist is not None:
+        DBLIST = []
+        with open(args.dblist, "r") as f:
+            for line in f:
+                DBLIST.append(line.strip())
+        _ = search_proteomes(args.bait, args.database_dir, args.output_dir,
+                             args.blast, args.keep, args.threads,
+                             args.min_bitscore, args.threshold, DBLIST)
+    else:
+        _ = search_proteomes(args.bait, args.database_dir, args.output_dir,
+                             args.blast, args.keep, args.threads,
+                             args.min_bitscore, args.threshold)

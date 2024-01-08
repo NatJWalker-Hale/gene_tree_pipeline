@@ -3,6 +3,7 @@
 import sys
 import subprocess
 import argparse
+import logging
 
 
 def fasta_to_aln(inf, thread=2, alner="mafft", accurate=False):
@@ -22,6 +23,8 @@ def fasta_to_aln(inf, thread=2, alner="mafft", accurate=False):
         outf = open(out, "w")
     print("Aligning sequences with "+alner)
     print(subprocess.list2cmdline(cmd))
+    logging.info(f"aligning sequences in {inf} with {alner}")
+    logging.info(subprocess.list2cmdline(cmd))
     proc = subprocess.Popen(cmd, shell=False, stdout=outf,
                             stderr=subprocess.PIPE)
     while proc.poll() is None:
@@ -34,6 +37,8 @@ def clean(aln):
     cmd = ["pxclsq", "-s", aln, "-o", cleaned, "-p", "0.1"]
     print("Cleaning alignment")
     print(subprocess.list2cmdline(cmd))
+    logging.info(f"cleaning alignment in {aln} to {cleaned}")
+    logging.info(subprocess.list2cmdline(cmd))
     subprocess.run(cmd, shell=False)
     return cleaned
 
@@ -46,8 +51,10 @@ def aln_to_tree(aln, treeblder="fasttree", thread=2):
         # cmd = ["iqtree", "-s", aln, "-m", "WAG+G", "-nt", str(thread)]
         cmd = ["raxml-ng", "--search", "--msa", aln, "--model", "WAG+G",
                "--threads", str(thread)]
-    print("Inferring tree with "+treeblder)
+    print(f"Inferring tree with {treeblder}")
     print(subprocess.list2cmdline(cmd))
+    logging.info(f"inferring tree from {aln} with {treeblder}")
+    logging.info(subprocess.list2cmdline(cmd))
     proc = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE)
     proc.wait()
     if treeblder == "raxml-ng":

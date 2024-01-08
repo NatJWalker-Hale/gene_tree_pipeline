@@ -4,6 +4,7 @@ import os
 import sys
 import argparse
 import newick3
+import logging
 from utils import parse_fasta
 from search_proteomes import search_proteomes
 from fasta_to_tree import fasta_to_tree
@@ -59,14 +60,28 @@ if __name__ == "__main__":
     parser.add_argument("-tc", "--tip_abs_cutoff", help="Absolute branch \
                         length cutoff for trimming tips. Tips longer than \
                         this will be trimmed. Defaults to 1.5", default=1.5)
+    parser.add_argument("-tcf", "--tip_abs_cutoff_final", help="Absolute \
+                        branch length cutoff for trimming tips in the final \
+                        round. Tips longer than this will be trimmed. \
+                        Defaults to 1.0", type=float, default=1.0)
     parser.add_argument("-rc", "--tip_rel_cutoff", help="Relative branch \
                         length cutoff for trimming tips. Tips longer than \
                         this and at least 10x longer than sister will be \
                         trimmed. Defaults to 1.0", default=1.0)
+    parser.add_argument("-rcf", "--tip_rel_cutoff_final", help="Relative \
+                        branch length cutoff for trimming tips in the final \
+                        round. Tips longer than this and at least 10x longer \
+                        than sister will be trimmed. Defaults to 0.5",
+                        type=float, default=0.5)
     parser.add_argument("-ic", "--internal_cutoff", help="Branch length \
                         cutoff for internal branches. Subtrees subtended by \
                         branches longer than this will be trimmed. Defaults \
                         to 1.0", default=1.0)
+    parser.add_argument("-icf", "--internal_cutoff_final", help="Branch \
+                        length cutoff for internal branches in the final \
+                        round. Subtrees subtended by branches longer than \
+                        this will be trimmed. Defaults to 0.8", type=float,
+                        default=0.8)
     parser.add_argument("-mt", "--min_taxa", help="Minimum taxa in a subtree \
                         to conserve and check for bait presence. Defaults to \
                         4", default=4)
@@ -84,21 +99,27 @@ if __name__ == "__main__":
                         default=None)
     parser.add_argument("-po", "--prune_og", help="Whether to extract rooted \
                         ingroup clades containing baits after first round of \
-                        tree inference (requires OG file, default off)",
+                        tree inference (requires OG file, default off) - TBI",
                         action="store_true")
     parser.add_argument("-og", "--outgroups", help="File containing outgroup \
-                        taxon labels, one per line")
+                        taxon labels, one per line - TBI")
     parser.add_argument("-it", "--iterate", help="how many times to iterate \
                         tree building and cleaning", type=int, default=3)
     parser.add_argument("-o", "--output_dir", help="Directory to put output. \
                         Defaults to current directory", default=os.getcwd())
     parser.add_argument("-k", "--keep", help="Number of hits to keep (default \
                         all)", type=int, default=None)
+    parser.add_argument("-dbl", "--dblist", help="Text file with files in \
+                        database_dir to to search, if not all, one per line")
     parser.add_argument("bait", help="FASTA file of baits to search")
     parser.add_argument("database_dir", help="Path to the database containing \
                         proteomes to search. Expects file endings of .pep.fa \
                         or .cdhit")
     args = parser.parse_args()
+
+    logging.basicConfig(filename='log.txt', encoding='utf-8',
+                        level=logging.DEBUG, filemode="w")
+    logging.info(" ".join([sys.executable] + sys.argv))
 
     if "/" in args.bait:
         name = args.bait.split("/")[-1].split(".")[0]
@@ -106,9 +127,12 @@ if __name__ == "__main__":
         name = args.bait.split(".")[0]
 
     BAITS = [key for key in dict([x for x in parse_fasta(args.bait)]).keys()]
+    logging.info(f"querying with {len(BAITS)} sequences in {args.bait}")
 
     if args.ignore_file is not None:
         IGNORE = get_names_to_exclude(args.ignore_file)
+        logging.info(f"during masking, ignoring {len(IGNORE)} taxa in " 
+                     f"{args.ignore_file}")
     else:
         IGNORE = []
 
@@ -121,9 +145,18 @@ if __name__ == "__main__":
             for line in f:
                 OUTGROUPS.append(line.strip())
 
-    hits = search_proteomes(args.bait, args.database_dir, args.output_dir,
-                            args.blast, args.keep, args.threads,
-                            args.min_bitscore, args.threshold)
+    if args.dblist is not None:
+        DBLIST = []
+        with open(args.dblist, "r") as f:
+            for line in f:
+                DBLIST.append(line.strip())
+        hits = search_proteomes(args.bait, args.database_dir, args.output_dir,
+                                args.blast, args.keep, args.threads,
+                                args.min_bitscore, args.threshold, DBLIST)
+    else:
+        hits = search_proteomes(args.bait, args.database_dir, args.output_dir,
+                                args.blast, args.keep, args.threads,
+                                args.min_bitscore, args.threshold)
 
     iters = args.iterate
     # first round
@@ -136,26 +169,33 @@ if __name__ == "__main__":
     for t in subtrees:
         if check_bait_presence(BAITS, t):
             fas.append(write_fasta_from_tree(hits, t))
+        else:
+            os.remove(t)
+            # comment out this if you want to keep
     iters -= 1  # now 2 in default
     while iters > 0:
         subtrees = []
-        if iters == 1:  # last round, do mafft --genafpair and iqtree
+        if iters == 1:  # last round, can change
+            # to do mafft --genafpair and iqtree
             for f in fas:
                 subtrees += fasta_to_subtree(f, args.aligner,
-                                             "raxml-ng",
-                                             args.tip_rel_cutoff,
-                                             args.tip_abs_cutoff,
-                                             args.internal_cutoff,
+                                             args.tree_builder,
+                                             args.tip_rel_cutoff_final,
+                                             args.tip_abs_cutoff_final,
+                                             args.internal_cutoff_final,
                                              args.min_taxa,
                                              args.threads, IGNORE,
                                              args.mask,
                                              args.mask_paraphyly,
-                                             accurate=True)
+                                             accurate=False)
             for t in subtrees:
                 if check_bait_presence(BAITS, t):
-                    fas.append(write_fasta_from_tree(hits, t))
+                    newf = write_fasta_from_tree(hits, t)
+                    logging.info(f"found baits in {t}, writing fasta to {newf}")
+                    fas.append(newf)
                 else:
-                    os.remove(t)  # comment out this if you want to keep
+                    os.remove(t)
+                    # comment out this if you want to keep
         else:
             for f in fas:
                 subtrees += fasta_to_subtree(f, args.aligner,
@@ -170,8 +210,11 @@ if __name__ == "__main__":
             fas = []
             for t in subtrees:
                 if check_bait_presence(BAITS, t):
-                    fas.append(write_fasta_from_tree(hits, t))
+                    newf = write_fasta_from_tree(hits, t)
+                    logging.info(f"found baits in {t}, writing fasta to {newf}")
+                    fas.append(newf)
                 else:
-                    os.remove(t)  # comment out this if you want to keep
+                    os.remove(t)
+                    # comment out this if you want to keep
         iters -= 1
     print("Done!")

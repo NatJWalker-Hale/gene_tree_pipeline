@@ -2,6 +2,7 @@
 
 import os
 import sys
+import copy
 import phylo3
 import newick3
 
@@ -164,6 +165,7 @@ def extract_rooted_ingroup_clades(root, ingroups, outgroups, min_ingroup_taxa):
                     front += 1
                 else:
                     sys.exit("Check taxonID "+name)
+            # print(node.label, front)
             back_names_set = set(get_back_names(node, root))
             for name in back_names_set:
                 if name in outgroups:
@@ -173,11 +175,12 @@ def extract_rooted_ingroup_clades(root, ingroups, outgroups, min_ingroup_taxa):
                     back += 1
                 else:
                     sys.exit("Check taxonID "+name)
+            # print(node.label, back)
             if front > max_score:
                 max_score, direction, max_node = front, "front", node
             if back > max_score:
                 max_score, direction, max_node = back, "back", node
-        # print max_score,direction
+            # print(max_score, direction)
         if max_score >= min_ingroup_taxa:
             if direction == "front":
                 inclades.append(max_node)
@@ -187,6 +190,90 @@ def extract_rooted_ingroup_clades(root, ingroups, outgroups, min_ingroup_taxa):
                 else:
                     break
             elif direction == "back":
+                par = max_node.parent
+                par.remove_child(max_node)
+                max_node.prune()
+                inclades.append(phylo3.reroot(root, par))  # flip dirction
+                if len(max_node.leaves()) > 3:
+                    max_node, root = remove_kink(max_node, max_node)
+                else:
+                    break
+        else:
+            break
+    return inclades
+
+
+def extract_rooted_ingroup_clades_with_outgroup(root, ingroups, outgroups,
+                                                min_ingroup_taxa):
+    """
+    input a tree with ingroups and at least 1 outgroups
+    output a list of rooted ingroup clades with their
+    associated outgroups
+    """
+    inclades = []
+    while True:
+        max_score, direction, max_node = 0, "", None
+        for node in root.iternodes():
+            front, back = 0, 0
+            front_names_set = set(get_front_names(node))
+            for name in front_names_set:
+                if name in outgroups:
+                    front = -1
+                    break
+                elif name in ingroups:
+                    front += 1
+                else:
+                    sys.exit("Check taxonID "+name)
+            # print(node.label, front)
+            back_names_set = set(get_back_names(node, root))
+            for name in back_names_set:
+                if name in outgroups:
+                    back = -1
+                    break
+                elif name in ingroups:
+                    back += 1
+                else:
+                    sys.exit("Check taxonID "+name)
+            # print(node.label, back)
+            if front > max_score:
+                max_score, direction, max_node = front, "front", node
+            if back > max_score:
+                max_score, direction, max_node = back, "back", node
+            # print(max_score, direction)
+        if max_score >= min_ingroup_taxa:
+            if direction == "front":
+                # print(direction)
+                # inclades.append(max_node)
+                #
+                new = copy.deepcopy(max_node)
+                og = True
+                while og:
+                    print("going")
+                    next = new.parent
+                    for c in next.children:
+                        if c == new:
+                            print("matched")
+                            continue
+                        names = set(get_front_names(c))
+                        print(names)
+                    for n in names:
+                        if n in ingroups:
+                            og = False
+                            inclades.append(new)
+                            break
+                    else:
+                        new = next
+                        if new.parent is None:
+                            print("at root")
+                            og = False
+                #
+                kink = max_node.prune()
+                if len(root.leaves()) > 3:
+                    newnode, root = remove_kink(kink, root)
+                else:
+                    break
+            elif direction == "back":
+                # print(direction)
                 par = max_node.parent
                 par.remove_child(max_node)
                 max_node.prune()
