@@ -153,7 +153,8 @@ def search_proteomes(bait, database_dir, output_dir, blast=False, nhits=None,
     else:
         logging.info(f"searching {len(dblist)} sequence DBs "
                                  f"in {database_dir}")
-        
+    logging.info("writing DBs to database.txt")
+
     if blast:
         logging.info("using blastp")
         outfile = os.path.abspath(output_dir) + "/" + name + ".blastp.fa"

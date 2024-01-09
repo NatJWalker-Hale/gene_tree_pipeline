@@ -5,6 +5,7 @@ import sys
 import argparse
 import newick3
 import logging
+import datetime
 from utils import parse_fasta
 from search_proteomes import search_proteomes
 from fasta_to_tree import fasta_to_tree
@@ -118,7 +119,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     logging.basicConfig(filename='log.txt', encoding='utf-8',
-                        level=logging.DEBUG, filemode="w")
+                        level=logging.DEBUG, filemode="w",
+                        format="%(levelname)s|%(message)s")
+    logging.info(datetime.datetime.now().strftime("%d.%b %Y %H:%M:%S"))
     logging.info(" ".join([sys.executable] + sys.argv))
 
     if "/" in args.bait:
