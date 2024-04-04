@@ -17,7 +17,7 @@ def get_seqs(q_ids: list, s_seqdict: dict) -> dict:
             try:
                 out_dict[s] = s_seqdict[re.sub(".p$", "", s)]
             except KeyError:
-                sys.stderr.write("unable to match %s, check\n" % s)
+                sys.stderr.write(f"unable to match {s}, check\n")
     return out_dict
 
 
@@ -27,14 +27,13 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("sequences", help="FASTA-formatted query sequences")
-    parser.add_argument("database_dir", help="Directory containing coding \
-                        sequence DBs to extract from. Names should match \
-                        query IDs")
+    parser.add_argument("database_dir", help="Directory containing coding sequence DBs to extract \
+                        from. Names should match query IDs")
     args = parser.parse_args()
 
-    q_dict = dict([x for x in parse_fasta(args.sequences)])
-    q_seq_ids = [x for x in q_dict.keys()]
-    q_taxa = set([x.split("@")[0] for x in q_seq_ids if "@" in x])
+    q_dict = dict(parse_fasta(args.sequences))
+    q_seq_ids = list(q_dict)
+    q_taxa = set(x.split("@")[0] for x in q_seq_ids if "@" in x)
     # no "@" is likely bait, so we skip
 
     db_dict = {}  # key is file, value is path
@@ -44,7 +43,7 @@ if __name__ == "__main__":
                 db_dict[f] = os.path.abspath(os.path.join(dirpath, f))
     # debug
     # print(db_dict)
-    db_names = [re.sub(".cds.fa$", "", x) for x in db_dict.keys()]
+    db_names = [re.sub(".cds.fa$", "", x) for x in db_dict]
     # debug
     # print(db_names)
 
@@ -55,11 +54,11 @@ if __name__ == "__main__":
         # first, try to match file name directly
         if t in db_names:  # match
             taxon_db_path = db_dict[t + ".cds.fa"]  # get path
-            cds_dict = dict([x for x in parse_fasta(taxon_db_path)])
+            cds_dict = dict(parse_fasta(taxon_db_path))
             s_dict = get_seqs(q_taxon_ids, cds_dict)
             out_seqs = out_seqs | s_dict
         else:  # try to match by first header
-            sys.stderr.write("searching headers for %s\n" % t)
+            sys.stderr.write(f"searching headers for {t}\n")
             match = False
             for v in db_dict.values():
                 with open(v, "r") as checkf:
@@ -70,13 +69,12 @@ if __name__ == "__main__":
                     if sid == t:
                         if not match:
                             match = True
-                            cds_dict = dict([x for x in parse_fasta(v)])
+                            cds_dict = dict(parse_fasta(v))
                             s_dict = get_seqs(q_taxon_ids, cds_dict)
-                            out_seqs = out_seqs | s_dict
+                            out_seqs |= s_dict
                         else:
-                            sys.stderr.write("taxon %s already matched, \
-                                             check that labels are \
-                                             non-redundant\n" % t)
+                            sys.stderr.write(f"taxon {t} already matched, check that labels are "
+                                             "non-redundant\n")
                             sys.exit()
 
     for k, v in out_seqs.items():

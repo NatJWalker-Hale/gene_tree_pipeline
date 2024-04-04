@@ -129,7 +129,7 @@ if __name__ == "__main__":
     else:
         name = args.bait.split(".")[0]
 
-    BAITS = [key for key in dict([x for x in parse_fasta(args.bait)]).keys()]
+    BAITS = [key for key in dict(parse_fasta(args.bait))]
     logging.info(f"querying with {len(BAITS)} sequences in {args.bait}")
 
     if args.ignore_file is not None:
@@ -148,13 +148,13 @@ if __name__ == "__main__":
             sys.stderr.write("Must specify outgroups with -og/--outgroups")
             sys.exit()
         OUTGROUPS = []
-        with open(args.outgroups, "r") as f:
+        with open(args.outgroups, "r", encoding="utf-8") as f:
             for line in f:
                 OUTGROUPS.append(line.strip())
 
     if args.dblist is not None:
         DBLIST = []
-        with open(args.dblist, "r") as f:
+        with open(args.dblist, "r", encoding="utf-8") as f:
             for line in f:
                 DBLIST.append(line.strip())
         hits = search_proteomes(args.bait, args.database_dir, args.output_dir,
