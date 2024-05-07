@@ -10,7 +10,7 @@ from utils import parse_fasta
 
 def get_taxon_code_name_corres(inf: str) -> dict:
     taxon_dict = {}
-    with open(inf, "r") as tax_table:
+    with open(inf, "r", encoding='utf-8') as tax_table:
         for line in tax_table:
             code, name = line.strip().split("\t")
             taxon_dict[code] = name
@@ -25,11 +25,11 @@ def relabel_tree(root: phylo3.Node, taxon_dict: dict) -> phylo3.Node:
             continue  # don't rename e.g. baits
         try:
             taxon = taxon_dict[code]
-            print(n.label + "\t" + "@".join([taxon, seq]))
+            print(f"{n.label}\t{'@'.join([taxon, seq])}")
             n.label = "@".join([taxon, seq])
         except KeyError:
             sys.stderr.write(
-                "code %s not in taxon dictionary\n" % code
+                f"code {code} not in taxon dictionary\n"
             )
             continue
     return root
@@ -37,33 +37,32 @@ def relabel_tree(root: phylo3.Node, taxon_dict: dict) -> phylo3.Node:
 
 def relabel_fasta(seq_dict: dict, taxon_dict: dict) -> dict:
     new_dict = {}
-    for k, v in seq_dict.items():
+    for header, seq in seq_dict.items():
         try:
-            code, seq = k.split("@")
+            code, sid = header.split("@")
+            try:
+                taxon = taxon_dict[code]
+                print(f"{header}\t{'@'.join([taxon, sid])}")
+                new_dict["@".join([taxon, sid])] = seq
+            except KeyError:
+                sys.stderr.write(
+                    f"code {code} not in taxon dictionary\n"
+                )
+                new_dict[header] = seq
         except ValueError:
-            new_dict[k] = v
-        try:
-            taxon = taxon_dict[code]
-            print(k + "\t" + "@".join([taxon, seq]))
-            new_dict["@".join([taxon, seq])] = v
-        except KeyError:
-            sys.stderr.write(
-                "code %s not in taxon dictionary\n" % code
-            )
-            new_dict[k] = v
+            new_dict[header] = seq
     return new_dict
 
 
 def detect_input(inf) -> bool:
-    with open(inf, "r") as f:
+    with open(inf, "r", encoding="utf-8") as f:
         first = f.readline()
         if first.startswith(">"):
             return True
-        elif first.startswith("("):
+        if first.startswith("("):
             return False
-        else:
-            sys.stderr.write("input not recognised\n")
-            sys.exit()
+        sys.stderr.write("input not recognised\n")
+        sys.exit()
 
 
 if __name__ == "__main__":
@@ -81,14 +80,15 @@ if __name__ == "__main__":
     # print(taxon_corres)
 
     if detect_input(args.input):
-        fasta = dict([x for x in parse_fasta(args.input)])
+        fasta = dict(parse_fasta(args.input))
         relabelled_fasta = relabel_fasta(fasta, taxon_corres)
-        with open(args.input + ".name", "w") as outf:
+        # print(relabelled_fasta)
+        with open(args.input + ".name", "w", encoding="utf-8") as outf:
             for k, v in relabelled_fasta.items():
                 outf.write(">" + k + "\n")
                 outf.write(v + "\n")
     else:
         t = newick3.parse_from_file(args.input)
         relabel_tree(t, taxon_corres)  # modifies in place
-        with open(args.input + ".name", "w") as outf:
+        with open(args.input + ".name", "w", encoding="utf-8") as outf:
             outf.write(newick3.to_string(t) + "\n")
