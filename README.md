@@ -33,9 +33,8 @@ A FASTA-formatted file of amino acid sequences of the queries of interest, and a
 Run `python3 bait_homologs.py` to see a full list of command line options:
 
 ```
-usage: bait_homologs.py [-h] [-b] [--min_bitscore MIN_BITSCORE] [--threshold THRESHOLD] [-a ALIGNER] [-t TREE_BUILDER] [-tc TIP_ABS_CUTOFF] [-tcf TIP_ABS_CUTOFF_FINAL] [-rc TIP_REL_CUTOFF]
-                        [-rcf TIP_REL_CUTOFF_FINAL] [-ic INTERNAL_CUTOFF] [-icf INTERNAL_CUTOFF_FINAL] [-mt MIN_TAXA] [-nt THREADS] [-m] [-mp] [-if IGNORE_FILE] [-po] [-og OUTGROUPS] [-it ITERATE]
-                        [-o OUTPUT_DIR] [-k KEEP] [-dbl DBLIST]
+usage: bait_homologs.py [-h] [-b] [--min_bitscore 30.0] [--threshold 0.1] [-a mafft] [-t fasttree] [-tc 1.5] [-tcf 1.0] [-rc 1.0] [-rcf 0.5] [-ic 1.0] [-icf 0.8] [-mt 4] [-nt 2] [-m]
+                        [-mp] [-if IGNORE_FILE] [-it 3] [-o ./] [-k all] [-dbl DBLIST]
                         bait database_dir
 
 positional arguments:
@@ -45,46 +44,37 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   -b, --blast           Use blastp for similarity search instead of default hmmsearch
-  --min_bitscore MIN_BITSCORE
-                        Filter blastp hits with bitscore lower than min_bitscore (default 30.0)
-  --threshold THRESHOLD
-                        Filter blastp hits with bitscore lower than threshold * max bitscore of query (default 0.1)
-  -a ALIGNER, --aligner ALIGNER
-                        Alignment software to use: mafft (auto, default), fsa (defaults to --fast)
-  -t TREE_BUILDER, --tree_builder TREE_BUILDER
-                        Tree building software to use: fasttree (wag, default), raxml-ng (defaults to WAG+G)
-  -tc TIP_ABS_CUTOFF, --tip_abs_cutoff TIP_ABS_CUTOFF
-                        Absolute branch length cutoff for trimming tips. Tips longer than this will be trimmed. Defaults to 1.5
-  -tcf TIP_ABS_CUTOFF_FINAL, --tip_abs_cutoff_final TIP_ABS_CUTOFF_FINAL
-                        Absolute branch length cutoff for trimming tips in the final round. Tips longer than this will be trimmed. Defaults to 1.0
-  -rc TIP_REL_CUTOFF, --tip_rel_cutoff TIP_REL_CUTOFF
-                        Relative branch length cutoff for trimming tips. Tips longer than this and at least 10x longer than sister will be trimmed. Defaults to 1.0
-  -rcf TIP_REL_CUTOFF_FINAL, --tip_rel_cutoff_final TIP_REL_CUTOFF_FINAL
-                        Relative branch length cutoff for trimming tips in the final round. Tips longer than this and at least 10x longer than sister will be trimmed. Defaults to 0.5
-  -ic INTERNAL_CUTOFF, --internal_cutoff INTERNAL_CUTOFF
-                        Branch length cutoff for internal branches. Subtrees subtended by branches longer than this will be trimmed. Defaults to 1.0
-  -icf INTERNAL_CUTOFF_FINAL, --internal_cutoff_final INTERNAL_CUTOFF_FINAL
-                        Branch length cutoff for internal branches in the final round. Subtrees subtended by branches longer than this will be trimmed. Defaults to 0.8
-  -mt MIN_TAXA, --min_taxa MIN_TAXA
-                        Minimum taxa in a subtree to conserve and check for bait presence. Defaults to 4
-  -nt THREADS, --threads THREADS
-                        Number of threads to use. Defaults to 2
+  --min_bitscore 30.0   Filter blastp hits with bitscore lower than min_bitscore
+  --threshold 0.1       Filter blastp hits with bitscore lower than threshold * max bitscore of query
+  -a mafft, --aligner mafft
+                        Alignment software to use: mafft, fsa (defaults to --fast)
+  -t fasttree, --tree_builder fasttree
+                        Tree building software to use: fasttree (wag), raxml-ng (defaults to WAG+G)
+  -tc 1.5, --tip_abs_cutoff 1.5
+                        Absolute branch length cutoff for trimming tips. Tips longer than this will be trimmed
+  -tcf 1.0, --tip_abs_cutoff_final 1.0
+                        Absolute branch length cutoff for trimming tips in the final round. Tips longer than this will be trimmed.
+  -rc 1.0, --tip_rel_cutoff 1.0
+                        Relative branch length cutoff for trimming tips. Tips longer than this and at least 10x longer than sister will be trimmed
+  -rcf 0.5, --tip_rel_cutoff_final 0.5
+                        Relative branch length cutoff for trimming tips in the final round. Tips longer than this and at least 10x longer than sister will be trimmed
+  -ic 1.0, --internal_cutoff 1.0
+                        Branch length cutoff for internal branches. Subtrees subtended by branches longer than this will be trimmed
+  -icf 0.8, --internal_cutoff_final 0.8
+                        Branch length cutoff for internal branches in the final round. Subtrees subtended by branches longer than this will be trimmed
+  -mt 4, --min_taxa 4   Minimum taxa in a subtree to conserve and check for bait presence
+  -nt 2, --threads 2    Number of threads to use
   -m, --mask            If this flag is selected, monophyletic masking will be conducted
   -mp, --mask_paraphyly
                         Whether to mask paraphyletic sequences while doing monophyletic masking
   -if IGNORE_FILE, --ignore_file IGNORE_FILE
-                        File containing taxon names (one per line) to ignore while masking monophyletic tips. Defaults masks all taxa
-  -po, --prune_og       Whether to extract rooted ingroup clades containing baits after first round of tree inference (requires OG file, default off) - TBI
-  -og OUTGROUPS, --outgroups OUTGROUPS
-                        File containing outgroup taxon labels, one per line - TBI
-  -it ITERATE, --iterate ITERATE
-                        how many times to iterate tree building and cleaning
-  -o OUTPUT_DIR, --output_dir OUTPUT_DIR
-                        Directory to put output. Defaults to current directory
-  -k KEEP, --keep KEEP  Number of hits to keep (default all)
+                        File containing taxon names (one per line) to ignore while masking monophyletic tips
+  -it 3, --iterate 3    how many times to iterate tree building and cleaning
+  -o ./, --output_dir ./
+                        Directory to put output
+  -k all, --keep all    Number of hits to keep
   -dbl DBLIST, --dblist DBLIST
                         Text file with files in database_dir to to search, if not all, one per line
-
 ```
 
 ## example
