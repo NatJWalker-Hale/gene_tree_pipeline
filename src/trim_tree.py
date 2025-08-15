@@ -13,9 +13,11 @@ from tree_utils import *
 def check_countrast_outlier(node0, node1, above0, above1, relative_cutoff):
     if node0.istip and above0 > relative_cutoff:
         if above1 == 0.0 or above0/above1 > 10:
+            print(above0/above1)
             return node0
     if node1.istip and above1 > relative_cutoff:
         if above0 == 0.0 or above1/above0 > 10:
+            print(above1/above0)
             return node1
     return None
 
@@ -40,6 +42,7 @@ def trim(curroot, relative_cutoff, absolute_cutoff):
             if i.nchildren == 0:  # at the tip
                 i.data['len'] = i.length
                 if i.length > absolute_cutoff:
+                    print("absolute", i.label)
                     curroot = remove_a_tip(curroot, i)
                     going = True
                     break
@@ -55,6 +58,7 @@ def trim(curroot, relative_cutoff, absolute_cutoff):
                 outlier = check_countrast_outlier(child0, child1, above0,
                                                   above1, relative_cutoff)
                 if outlier is not None:
+                    print("bifurcating", outlier.label)
                     curroot = remove_a_tip(curroot, outlier)
                     going = True  # need to keep checking
                     break
@@ -75,6 +79,7 @@ def trim(curroot, relative_cutoff, absolute_cutoff):
                                                           above1, above2,
                                                           relative_cutoff)
                         if outlier is not None:
+                            print("poly", outlier.label)
                             print(above1, above2)
                             curroot = remove_a_tip(curroot, outlier)
                             going = True  # need to keep checking
@@ -93,8 +98,8 @@ def trim_tree(inf, relative_cut=1.0, absolute_cut=1.5):
     out_tips = len(outtree.leaves())
     # if outtree is not None:
     out = inf + ".tt"
-    logging.info(f"trimming tips in {inf} longer than {absolute_cut} "
-                f"or >10x length of sister and longer than {relative_cut}")
+    logging.info(f"trimming tips in {inf} longer than {absolute_cut}"
+                 f"or >10x length of sister and longer than {relative_cut}")
     logging.info(f"trimmed {in_tips - out_tips} tip(s), writing to {out}")
     with open(out, "w") as outfile:
         outfile.write(newick3.tostring(outtree)+";\n")
@@ -115,4 +120,4 @@ if __name__ == "__main__":
     parser.add_argument("intree", help="Tree in newick format to trim long \
                         branches")
     args = parser.parse_args()
-    _ = trim_tree(args.intree, args.absolute_cutoff, args.relative_cutoff)
+    _ = trim_tree(args.intree, args.relative_cutoff, args.absolute_cutoff)

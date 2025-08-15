@@ -134,17 +134,28 @@ def search_proteomes(bait, database_dir, output_dir, blast=False, nhits=None,
     # collect individual sequence sets
     dblist = []
     outf = open("database.txt", "w")
-    for dirpath, _, filenames in os.walk(database_dir):
-        for f in filenames:
-            if f.endswith(".pep.fa") or f.endswith(".cdhit"):  # add suffix
-                if dbkeep is not None:
+    # for dirpath, _, filenames in os.walk(database_dir):
+    #     for f in filenames:
+    #         if f.endswith(".pep.fa") or f.endswith(".cdhit"):  # add suffix
+    #             if dbkeep is not None:
+    #                 if f in dbkeep:
+    #                     dblist.append(os.path.abspath(os.path.join(dirpath,
+    #                                                                 f)))
+    #                     outf.write(f"{f}\n")
+    #             else:
+    #                 dblist.append(os.path.abspath(os.path.join(dirpath, f)))
+    #                 outf.write(f"{f}\n")
+
+    dirpath = next(os.walk(database_dir))[0]
+    for f in os.listdir(database_dir):
+        if f.endswith(".pep.fa") or f.endswith(".cdhit"):  # add suffix
+            if dbkeep is not None:
                     if f in dbkeep:
-                        dblist.append(os.path.abspath(os.path.join(dirpath,
-                                                                    f)))
+                        dblist.append(os.path.abspath(os.path.join(dirpath, f)))
                         outf.write(f"{f}\n")
-                else:
-                    dblist.append(os.path.abspath(os.path.join(dirpath, f)))
-                    outf.write(f"{f}\n")
+            else:
+                dblist.append(os.path.abspath(os.path.join(dirpath, f)))
+                outf.write(f"{f}\n")
     outf.close()
 
     if dbkeep is not None:

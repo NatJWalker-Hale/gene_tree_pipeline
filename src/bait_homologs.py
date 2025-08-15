@@ -124,14 +124,14 @@ if __name__ == "__main__":
     else:
         IGNORE = []
 
-    if args.prune_og:
-        if not args.outgroups:
-            sys.stderr.write("Must specify outgroups with -og/--outgroups")
-            sys.exit()
-        OUTGROUPS = []
-        with open(args.outgroups, "r", encoding="utf-8") as f:
-            for line in f:
-                OUTGROUPS.append(line.strip())
+    # if args.prune_og:
+    #     if not args.outgroups:
+    #         sys.stderr.write("Must specify outgroups with -og/--outgroups")
+    #         sys.exit()
+    #     OUTGROUPS = []
+    #     with open(args.outgroups, "r", encoding="utf-8") as f:
+    #         for line in f:
+    #             OUTGROUPS.append(line.strip())
 
     if args.dblist is not None:
         DBLIST = []

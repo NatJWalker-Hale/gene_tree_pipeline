@@ -26,18 +26,21 @@ def cut_long_internal_branches(curroot, cutoff, mintaxa=4):
                 continue
             if node.istip:  # skip tips
                 continue
+            if node.nchildren == 1:
+                node,curroot = remove_kink(node, curroot)
+                going = True
+                break
             child0, child1 = node.children[0], node.children[1]
             if node.length > cutoff:
                 print(node.length)
-                if not child0.istip and not child1.istip:
-                    if child0.length + child1.length > cutoff:
-                        # resulting subtree would have two clades separated
-                        # by length longer than cutoff, hence prune already
-                        print(child0.length + child1.length)
-                        if count_taxa(child0) >= int(mintaxa):
-                            subtrees.append(child0)
-                        if count_taxa(child1) >= int(mintaxa):
-                            subtrees.append(child1)
+                if not child0.istip and not child1.istip and child0.length + child1.length > cutoff:
+                    # resulting subtree would have two clades separated
+                    # by length longer than cutoff, hence prune already
+                    print(child0.length + child1.length)
+                    if count_taxa(child0) >= int(mintaxa):
+                        subtrees.append(child0)
+                    if count_taxa(child1) >= int(mintaxa):
+                        subtrees.append(child1)
                 else:
                     subtrees.append(node)
                 node = node.prune()
@@ -45,8 +48,8 @@ def cut_long_internal_branches(curroot, cutoff, mintaxa=4):
                     node, curroot = remove_kink(node, curroot)
                     going = True
                 break
-    # if count_taxa(curroot) >= int(mintaxa):
-    subtrees.append(curroot)  # write out the residue after cutting
+    if count_taxa(curroot) >= int(mintaxa):
+        subtrees.append(curroot)  # write out the residue after cutting
     return subtrees
 
 
@@ -62,6 +65,7 @@ def cut_internal_branches(tre, brlencutoff=1.0, mintaxa=4):
                            cut_long_internal_branches(intree, brlencutoff,
                                                       mintaxa)],
                           reverse=True, key=lambda x: count_taxa(x))
+        print(subtrees)
         if len(subtrees) == 0:
             print("No branches to cut in "+tre)
             logging.info(f"no branches to cut in {tre}, writing input to "
@@ -78,6 +82,7 @@ def cut_internal_branches(tre, brlencutoff=1.0, mintaxa=4):
                                         "_",
                                         str(count),
                                         ".subtree"])
+                    print(sub_name)
                     subtree_names.append(sub_name)
                     with open(sub_name, "w") as outfile:
                         outfile.write(newick3.tostring(t)+";\n")
@@ -100,4 +105,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     tref = os.path.abspath(args.intree)
+    # print(tref)
     cut_internal_branches(tref, args.brlencut, args.mintaxa)
